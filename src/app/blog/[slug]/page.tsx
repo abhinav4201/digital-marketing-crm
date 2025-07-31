@@ -32,12 +32,15 @@ async function getPost(slug: string): Promise<Post | null> {
   return snapshot.docs[0].data() as Post;
 }
 
-export default async function BlogPostPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  const post = await getPost(params.slug);
+// Define PageProps interface for Next.js dynamic route
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function BlogPostPage({ params }: PageProps) {
+  // Await the params to resolve the promise
+  const { slug } = await params;
+  const post = await getPost(slug);
 
   if (!post) {
     notFound();

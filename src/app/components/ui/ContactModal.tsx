@@ -11,7 +11,7 @@ import {
   TransitionChild,
 } from "@headlessui/react";
 import { signInWithPopup } from "firebase/auth";
-import { useRouter } from "next/navigation"; // Import the router
+import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { FaGoogle, FaTimes, FaWhatsapp } from "react-icons/fa";
 import { auth, provider } from "../../lib/firebase";
@@ -19,7 +19,6 @@ import { useAuth } from "../../providers/AuthProvider";
 import { useModalStore } from "../../store/useModalStore";
 import SuccessMessage from "./SuccessMessage";
 
-// --- COMPONENT DEFINITIONS MOVED OUTSIDE ---
 const NotLoggedInView = ({ onSignIn }: { onSignIn: () => void }) => (
   <div className='text-center p-8'>
     <h3 className='text-2xl font-bold text-white mb-4'>Please Sign In</h3>
@@ -178,7 +177,7 @@ const ContactFormView = ({
 const ContactModal = () => {
   const { isOpen, closeModal } = useModalStore();
   const { user } = useAuth();
-  const router = useRouter(); // Initialize the router
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -223,14 +222,13 @@ const ContactModal = () => {
     }
   }, [user, isOpen, resetForm]);
 
-  // CHANGED: This effect now handles both auto-closing and redirecting
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (submissionComplete) {
       timer = setTimeout(() => {
-        resetForm(true); // Close the modal
-        router.push("/dashboard"); // Redirect to dashboard
-      }, 3000); // Shortened to 3 seconds for a better UX
+        resetForm(true);
+        router.push("/dashboard");
+      }, 3000);
     }
     return () => clearTimeout(timer);
   }, [submissionComplete, resetForm, router]);
@@ -331,10 +329,11 @@ const ContactModal = () => {
       const responseData = await response.json();
 
       if (response.ok) {
-        setSubmissionComplete(true);
+        // On success, close the modal and redirect to the new project page
+        closeModal();
+        router.push(`/dashboard/${responseData.requestId}`);
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || "An unknown error occurred.");
+        setError(responseData.error || "An unknown error occurred.");
       }
     } catch (err) {
       setError("A network error occurred. Please try again.");

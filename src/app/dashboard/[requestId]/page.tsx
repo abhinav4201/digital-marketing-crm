@@ -1,11 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { doc, onSnapshot, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../providers/AuthProvider";
 import { useInfoModalStore } from "../../store/useInfoModalStore";
-import { ArrowLeft, Edit, CheckCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit,
+  CheckCircle,
+  RefreshCw,
+  AlertTriangle,
+} from "lucide-react";
 
 interface Request {
   id: string;
@@ -43,29 +49,23 @@ const ProjectDetailPage = () => {
 
   const [quotationPrice, setQuotationPrice] = useState("");
   const [quotationDetails, setQuotationDetails] = useState("");
-
-  // New state to control the admin's edit mode for quotations
   const [isEditingQuotation, setIsEditingQuotation] = useState(false);
 
   const { openModal: openInfoModal } = useInfoModalStore();
 
   useEffect(() => {
-    if (!requestId) return;
+    if (!requestId || !user) return;
     const docRef = doc(db, "requests", requestId);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = { id: docSnap.id, ...docSnap.data() } as Request;
-        if (user && (data.userId === user.uid || isAdmin)) {
+        if (data.userId === user.uid || isAdmin) {
           setRequest(data);
           setSelectedServices(data.selectedServices || []);
           setQuotationPrice(data.quotationPrice?.toString() || "");
           setQuotationDetails(data.quotationDetails || "");
-          // If a quotation exists, default to not being in edit mode
-          if (data.quotationPrice) {
-            setIsEditingQuotation(false);
-          } else {
-            setIsEditingQuotation(true); // If no quote yet, start in edit mode
-          }
+          // Default to edit mode only if no quote has ever been sent
+          setIsEditingQuotation(!data.quotationPrice);
         } else {
           setError("You do not have permission to view this project.");
         }
@@ -76,6 +76,23 @@ const ProjectDetailPage = () => {
     });
     return () => unsubscribe();
   }, [requestId, user, isAdmin]);
+
+  const handleUpdate = useCallback(
+    async (updateData: object) => {
+      setIsSubmitting(true);
+      const docRef = doc(db, "requests", requestId);
+      try {
+        await updateDoc(docRef, updateData);
+        return true;
+      } catch (err) {
+        console.error(err);
+        return false;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [requestId]
+  );
 
   const handleServiceToggle = (service: string) => {
     setSelectedServices((prev) =>
@@ -90,76 +107,93 @@ const ProjectDetailPage = () => {
       openInfoModal("Selection Error", "Please select at least one service.");
       return;
     }
-    setIsSubmitting(true);
-    const docRef = doc(db, "requests", requestId);
-    try {
-      await updateDoc(docRef, {
-        selectedServices: selectedServices,
-        status: "Services Selected",
-        lastUpdatedBy: "user",
-      });
-      openInfoModal("Success", "Services updated successfully!");
-    } catch (err) {
-      console.error(err);
-      openInfoModal(
-        "Update Failed",
-        "There was an error updating the services."
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    const success = await handleUpdate({
+      selectedServices: selectedServices,
+      status: "Services Selected",
+      lastUpdatedBy: "user",
+    });
+    if (success) openInfoModal("Success", "Services updated successfully!");
+    else
+      openInfoModal("Update Failed", "There was an error updating services.");
   };
 
   const handleSendQuotation = async () => {
     if (!quotationPrice || !quotationDetails) {
-      openInfoModal(
-        "Input Error",
-        "Please fill in both price and details for the quotation."
-      );
+      openInfoModal("Input Error", "Please fill in both price and details.");
       return;
     }
-    setIsSubmitting(true);
-    const docRef = doc(db, "requests", requestId);
-    try {
-      await updateDoc(docRef, {
-        quotationPrice: parseFloat(quotationPrice),
-        quotationDetails: quotationDetails,
-        status: "Quotation Sent",
-        lastUpdatedBy: "admin",
-      });
+    const success = await handleUpdate({
+      quotationPrice: parseFloat(quotationPrice),
+      quotationDetails: quotationDetails,
+      status: "Quotation Sent",
+      lastUpdatedBy: "admin",
+    });
+    if (success) {
       openInfoModal("Success", "Quotation sent successfully!");
-      setIsEditingQuotation(false); // Exit edit mode after sending
-    } catch (err) {
-      console.error(err);
+      setIsEditingQuotation(false);
+    } else
       openInfoModal("Send Failed", "There was an error sending the quotation.");
-    } finally {
-      setIsSubmitting(false);
-    }
+  };
+
+  const handleRequestRevision = async () => {
+    const success = await handleUpdate({
+      status: "Revision Requested",
+      lastUpdatedBy: "user",
+    });
+    if (success)
+      openInfoModal(
+        "Request Sent",
+        "Your request for a revised quotation has been sent to the admin."
+      );
+    else openInfoModal("Request Failed", "Could not send revision request.");
+  };
+
+  const handleApproveRevision = async () => {
+    const success = await handleUpdate({
+      status: "Service Selection Pending",
+      lastUpdatedBy: "admin",
+      selectedServices: [],
+      quotationPrice: null,
+      quotationDetails: null,
+    });
+    if (success)
+      openInfoModal(
+        "Revision Approved",
+        "The user can now edit their selected services."
+      );
+    else openInfoModal("Approval Failed", "Could not approve revision.");
   };
 
   const handleAcceptQuotation = async () => {
-    setIsSubmitting(true);
-    const docRef = doc(db, "requests", requestId);
-    try {
-      await updateDoc(docRef, {
-        status: "Project Approved",
-        lastUpdatedBy: "user",
-      });
-      openInfoModal("Project Started!", "Quotation accepted!");
-    } catch (err) {
-      console.error(err);
+    const success = await handleUpdate({
+      status: "Project Approved",
+      lastUpdatedBy: "user",
+    });
+    if (success) openInfoModal("Project Started!", "Quotation accepted!");
+    else
       openInfoModal(
         "Acceptance Failed",
         "There was an error accepting the quotation."
       );
-    } finally {
-      setIsSubmitting(false);
-    }
+  };
+
+  const handlePostApprovalChangeRequest = async () => {
+    const success = await handleUpdate({
+      status: "Change Request Pending",
+      lastUpdatedBy: isAdmin ? "admin" : "user",
+    });
+    if (success)
+      openInfoModal(
+        "Request Sent",
+        "A request for changes has been submitted. The admin will review and contact you."
+      );
+    else openInfoModal("Request Failed", "Could not submit change request.");
   };
 
   const getStatusChip = (status?: string) => {
     let colorClasses = "bg-yellow-100 text-yellow-800";
-    switch (status) {
+    const currentStatus = status || "Service Selection Pending";
+    switch (currentStatus) {
       case "Project Approved":
         colorClasses = "bg-green-100 text-green-800";
         break;
@@ -169,12 +203,18 @@ const ProjectDetailPage = () => {
       case "Services Selected":
         colorClasses = "bg-indigo-100 text-indigo-800";
         break;
+      case "Revision Requested":
+        colorClasses = "bg-orange-100 text-orange-800";
+        break;
+      case "Change Request Pending":
+        colorClasses = "bg-pink-100 text-pink-800";
+        break;
     }
     return (
       <span
         className={`px-3 py-1 text-sm font-semibold rounded-full ${colorClasses}`}
       >
-        {status || "Pending"}
+        {currentStatus}
       </span>
     );
   };
@@ -199,9 +239,14 @@ const ProjectDetailPage = () => {
     );
 
   const isUserOwner = user?.uid === request.userId;
-  const canUserSelectServices = isUserOwner && !request.selectedServices;
+  const isServiceSelectionLocked =
+    request.status !== "Service Selection Pending";
   const hasQuotation =
-    request.quotationPrice !== undefined && request.quotationPrice > 0;
+    request.quotationPrice !== undefined &&
+    request.quotationPrice !== null &&
+    request.quotationPrice > 0;
+  const hasSelectedServices =
+    request.selectedServices && request.selectedServices.length > 0;
 
   return (
     <div className='min-h-screen p-4 sm:p-8'>
@@ -238,150 +283,233 @@ const ProjectDetailPage = () => {
           </div>
         </div>
 
-        {canUserSelectServices && (
-          <div className='bg-white p-6 rounded-lg shadow-md border border-gray-200'>
-            <h2 className='text-2xl font-semibold mb-4 text-gray-900'>
-              Select Your Services
-            </h2>
-            <p className='text-gray-600 mb-6'>
-              Please select the services you are interested in for this project.
-            </p>
-            <div className='grid grid-cols-2 sm:grid-cols-3 gap-4'>
-              {servicesList.map((service) => (
-                <button
-                  key={service}
-                  onClick={() => handleServiceToggle(service)}
-                  className={`p-4 rounded-lg text-center font-semibold transition-all duration-200 ${
-                    selectedServices.includes(service)
-                      ? "bg-blue-600 text-white shadow-lg scale-105"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  {service}
-                </button>
-              ))}
+        {/* --- SERVICE SELECTION SECTION (Visible to User and Admin) --- */}
+        <div className='bg-white p-6 rounded-lg shadow-md border border-gray-200'>
+          <h2 className='text-2xl font-semibold mb-4 text-gray-900'>
+            Service Selection
+          </h2>
+          {isServiceSelectionLocked && isUserOwner && (
+            <div className='p-4 mb-6 bg-yellow-50 border-l-4 border-yellow-400'>
+              <p className='text-yellow-700'>
+                Service selection is locked. To make changes, please request a
+                revision.
+              </p>
             </div>
+          )}
+          <div className='grid grid-cols-2 sm:grid-cols-3 gap-4'>
+            {servicesList.map((service) => (
+              <button
+                key={service}
+                onClick={() =>
+                  !isServiceSelectionLocked &&
+                  isUserOwner &&
+                  handleServiceToggle(service)
+                }
+                disabled={isServiceSelectionLocked && isUserOwner}
+                className={`p-4 rounded-lg text-center font-semibold transition-all duration-200 ${
+                  selectedServices.includes(service)
+                    ? "bg-blue-600 text-white shadow-lg"
+                    : "bg-gray-100 text-gray-700"
+                } ${
+                  !isServiceSelectionLocked && isUserOwner
+                    ? "hover:bg-gray-200"
+                    : "cursor-not-allowed opacity-70"
+                }`}
+              >
+                {service}
+              </button>
+            ))}
+          </div>
+          {!isServiceSelectionLocked && isUserOwner && (
             <button
               onClick={handleServiceSubmission}
               disabled={isSubmitting}
-              className='mt-8 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400 transition-colors'
+              className='mt-8 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400'
             >
               {isSubmitting ? "Submitting..." : "Confirm Services"}
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {isAdmin && request.selectedServices && (
-          <div className='bg-white p-6 rounded-lg shadow-md border border-gray-200'>
-            <h2 className='text-2xl font-semibold mb-4 text-gray-900'>
-              Client&apos;s Selected Services
-            </h2>
-            <ul className='flex flex-wrap gap-2 mb-6'>
-              {request.selectedServices.map((service) => (
-                <li
-                  key={service}
-                  className='bg-indigo-100 text-indigo-800 text-sm font-medium px-3 py-1 rounded-full'
-                >
-                  {service}
-                </li>
-              ))}
-            </ul>
-
-            <div className='border-t border-gray-200 pt-6'>
-              <div className='flex justify-between items-center mb-4'>
-                <h3 className='text-xl font-semibold text-gray-900'>
-                  {hasQuotation && !isEditingQuotation
-                    ? "View Quotation"
-                    : "Send / Edit Quotation"}
-                </h3>
-                {hasQuotation && !isEditingQuotation && (
-                  <button
-                    onClick={() => setIsEditingQuotation(true)}
-                    className='inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800'
-                  >
-                    <Edit className='mr-2 h-4 w-4' /> Edit
-                  </button>
-                )}
-              </div>
-
-              {isEditingQuotation ? (
-                <div className='space-y-4'>
-                  <div>
-                    <label
-                      htmlFor='quotationPrice'
-                      className='block text-sm font-medium text-gray-700'
-                    >
-                      Price (INR)
-                    </label>
-                    <input
-                      type='number'
-                      name='quotationPrice'
-                      id='quotationPrice'
-                      value={quotationPrice}
-                      onChange={(e) => setQuotationPrice(e.target.value)}
-                      className='mt-1 block w-full bg-gray-50 border-gray-300 rounded-md shadow-sm p-2'
-                      placeholder='e.g., 50000'
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor='quotationDetails'
-                      className='block text-sm font-medium text-gray-700'
-                    >
-                      Quotation Details
-                    </label>
-                    <textarea
-                      name='quotationDetails'
-                      id='quotationDetails'
-                      rows={4}
-                      value={quotationDetails}
-                      onChange={(e) => setQuotationDetails(e.target.value)}
-                      className='mt-1 block w-full bg-gray-50 border-gray-300 rounded-md shadow-sm p-2'
-                      placeholder='e.g., Includes initial design mockups...'
-                    ></textarea>
-                  </div>
-                  <div className='flex items-center gap-4'>
-                    <button
-                      onClick={handleSendQuotation}
-                      disabled={isSubmitting}
-                      className='flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400'
-                    >
-                      {isSubmitting
-                        ? "Sending..."
-                        : hasQuotation
-                        ? "Update Quotation"
-                        : "Send Quotation"}
-                    </button>
-                    {hasQuotation && (
-                      <button
-                        onClick={() => setIsEditingQuotation(false)}
-                        className='text-sm text-gray-600 hover:underline'
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
+        {/* --- REVISION REQUEST SECTION (User only) --- */}
+        {isUserOwner &&
+          isServiceSelectionLocked &&
+          request.status !== "Project Approved" &&
+          request.status !== "Change Request Pending" && (
+            <div className='bg-white p-6 rounded-lg shadow-md border border-gray-200'>
+              <h2 className='text-2xl font-semibold mb-4 text-gray-900'>
+                Need to make a change?
+              </h2>
+              {request.status === "Revision Requested" ? (
+                <p className='text-gray-600'>
+                  Your revision request has been sent. Please wait for the admin
+                  to approve it.
+                </p>
               ) : (
-                <div className='p-4 bg-blue-50 rounded-lg'>
-                  <p className='text-sm font-medium text-gray-600'>
-                    Project Price
+                <>
+                  <p className='text-gray-600 mb-6'>
+                    If you need to add or remove services, please request a
+                    revised quotation from the admin.
                   </p>
-                  <p className='text-3xl font-bold text-blue-600'>
-                    ₹{request.quotationPrice!.toLocaleString("en-IN")}
-                  </p>
-                  <p className='text-sm font-medium text-gray-600 mt-4'>
-                    Details
-                  </p>
-                  <p className='text-gray-700 whitespace-pre-wrap mt-1'>
-                    {request.quotationDetails}
-                  </p>
-                </div>
+                  <button
+                    onClick={handleRequestRevision}
+                    disabled={isSubmitting}
+                    className='w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400 flex items-center justify-center'
+                  >
+                    <RefreshCw className='mr-2 h-5 w-5' />
+                    {isSubmitting
+                      ? "Requesting..."
+                      : "Request Revised Quotation"}
+                  </button>
+                </>
               )}
             </div>
+          )}
+
+        {/* --- ADMIN QUOTATION & REVISION APPROVAL SECTION --- */}
+        {isAdmin && (
+          <div className='bg-white p-6 rounded-lg shadow-md border border-gray-200'>
+            {/* BUG FIX: This section is now always visible to the admin if services have been selected */}
+            {hasSelectedServices ? (
+              <>
+                <h2 className='text-2xl font-semibold mb-4 text-gray-900'>
+                  Client&apos;s Selected Services
+                </h2>
+                <ul className='flex flex-wrap gap-2 mb-6'>
+                  {request.selectedServices!.map((service) => (
+                    <li
+                      key={service}
+                      className='bg-indigo-100 text-indigo-800 text-sm font-medium px-3 py-1 rounded-full'
+                    >
+                      {service}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className='text-gray-500 text-center'>
+                The user has not selected any services yet.
+              </p>
+            )}
+
+            {request.status === "Revision Requested" && (
+              <div className='p-4 my-6 bg-orange-50 border-l-4 border-orange-400'>
+                <h3 className='font-bold text-orange-800'>
+                  Revision Requested
+                </h3>
+                <p className='text-orange-700 mt-1'>
+                  The user wants to change their selected services. Approving
+                  this will unlock their selection and reset the current
+                  quotation.
+                </p>
+                <button
+                  onClick={handleApproveRevision}
+                  disabled={isSubmitting}
+                  className='mt-4 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg'
+                >
+                  {isSubmitting ? "Approving..." : "Approve Revision Request"}
+                </button>
+              </div>
+            )}
+
+            {/* The quotation form is only shown if services have been selected */}
+            {hasSelectedServices && (
+              <div className='border-t border-gray-200 pt-6'>
+                <div className='flex justify-between items-center mb-4'>
+                  <h3 className='text-xl font-semibold text-gray-900'>
+                    {hasQuotation && !isEditingQuotation
+                      ? "View Quotation"
+                      : "Send / Edit Quotation"}
+                  </h3>
+                  {hasQuotation && !isEditingQuotation && (
+                    <button
+                      onClick={() => setIsEditingQuotation(true)}
+                      className='inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800'
+                    >
+                      <Edit className='mr-2 h-4 w-4' /> Edit
+                    </button>
+                  )}
+                </div>
+                {isEditingQuotation ? (
+                  <div className='space-y-4'>
+                    <div>
+                      <label
+                        htmlFor='quotationPrice'
+                        className='block text-sm font-medium text-gray-700'
+                      >
+                        Price (INR)
+                      </label>
+                      <input
+                        type='number'
+                        name='quotationPrice'
+                        id='quotationPrice'
+                        value={quotationPrice}
+                        onChange={(e) => setQuotationPrice(e.target.value)}
+                        className='mt-1 block w-full bg-gray-50 border-gray-300 rounded-md shadow-sm p-2'
+                        placeholder='e.g., 50000'
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor='quotationDetails'
+                        className='block text-sm font-medium text-gray-700'
+                      >
+                        Quotation Details
+                      </label>
+                      <textarea
+                        name='quotationDetails'
+                        id='quotationDetails'
+                        rows={4}
+                        value={quotationDetails}
+                        onChange={(e) => setQuotationDetails(e.target.value)}
+                        className='mt-1 block w-full bg-gray-50 border-gray-300 rounded-md shadow-sm p-2'
+                        placeholder='e.g., Includes initial design mockups...'
+                      ></textarea>
+                    </div>
+                    <div className='flex items-center gap-4'>
+                      <button
+                        onClick={handleSendQuotation}
+                        disabled={isSubmitting}
+                        className='flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400'
+                      >
+                        {isSubmitting
+                          ? "Sending..."
+                          : hasQuotation
+                          ? "Update Quotation"
+                          : "Send Quotation"}
+                      </button>
+                      {hasQuotation && (
+                        <button
+                          onClick={() => setIsEditingQuotation(false)}
+                          className='text-sm text-gray-600 hover:underline'
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className='p-4 bg-blue-50 rounded-lg'>
+                    <p className='text-sm font-medium text-gray-600'>
+                      Project Price
+                    </p>
+                    <p className='text-3xl font-bold text-blue-600'>
+                      ₹{request.quotationPrice!.toLocaleString("en-IN")}
+                    </p>
+                    <p className='text-sm font-medium text-gray-600 mt-4'>
+                      Details
+                    </p>
+                    <p className='text-gray-700 whitespace-pre-wrap mt-1'>
+                      {request.quotationDetails}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
+        {/* --- USER QUOTATION VIEW --- */}
         {isUserOwner && hasQuotation && (
           <div className='bg-white p-6 rounded-lg shadow-md border border-gray-200'>
             <h2 className='text-2xl font-semibold mb-4 text-gray-900'>
@@ -415,6 +543,30 @@ const ProjectDetailPage = () => {
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* --- POST-APPROVAL CHANGE REQUEST SECTION --- */}
+        {request.status === "Project Approved" && (
+          <div className='bg-white p-6 rounded-lg shadow-md border border-gray-200'>
+            <h2 className='text-2xl font-semibold mb-4 text-gray-900'>
+              Post-Approval Changes
+            </h2>
+            <p className='text-gray-600 mb-6'>
+              If you need to make changes to this approved project, please
+              submit a request. The admin will review it and get in touch to
+              discuss the next steps.
+            </p>
+            <button
+              onClick={handlePostApprovalChangeRequest}
+              disabled={isSubmitting}
+              className='w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400 flex items-center justify-center'
+            >
+              <AlertTriangle className='mr-2 h-5 w-5' />
+              {isSubmitting
+                ? "Submitting..."
+                : "Request Changes to Approved Project"}
+            </button>
           </div>
         )}
       </div>

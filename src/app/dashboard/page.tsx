@@ -46,50 +46,50 @@ const DashboardPage = () => {
     }
   }, [user]);
 
-   const getStatusText = (status?: string) => {
-     if (!status || status === "Pending") {
-       return "Service Selection Pending";
-     }
-     return status;
-   };
+  const getStatusText = (status?: string) => {
+    if (!status || status === "Pending") {
+      return "Service Selection Pending";
+    }
+    return status;
+  };
 
   const getStatusChipColor = (status?: string) => {
-    switch (status) {
+    const currentStatus = getStatusText(status);
+    switch (currentStatus) {
       case "Project Approved":
         return "bg-green-100 text-green-800";
       case "Quotation Sent":
         return "bg-blue-100 text-blue-800";
       case "Services Selected":
         return "bg-indigo-100 text-indigo-800";
+      case "Revision Requested":
+        return "bg-orange-100 text-orange-800";
       default:
         return "bg-yellow-100 text-yellow-800";
     }
   };
-  
 
   if (loading) {
     return (
-      <div className='min-h-screen flex items-center justify-center'>
-        <p className='text-gray-500'>Loading your projects...</p>
+      <div className='min-h-screen flex items-center justify-center bg-background'>
+        <p className='text-text-secondary'>Loading your projects...</p>
       </div>
     );
   }
 
   return (
-    <div className='min-h-screen p-4 sm:p-8'>
+    <div className='min-h-screen bg-background p-4 sm:p-8'>
       <div className='max-w-6xl mx-auto'>
         <h1 className='text-3xl sm:text-4xl font-bold text-slate-900 mb-8'>
           Welcome, {user?.displayName || user?.email}
         </h1>
-
         {requests.length > 0 ? (
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
             {requests.map((req) => {
               const hasNewUpdate = req.lastUpdatedBy === "admin";
-
               return (
                 <Link href={`/dashboard/${req.id}`} key={req.id}>
-                  <div className='bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden h-full flex flex-col'>
+                  <div className=' bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden h-full flex flex-col'>
                     <div className='p-5 flex-grow'>
                       <div className='flex justify-between items-start'>
                         <p
@@ -127,8 +127,7 @@ const DashboardPage = () => {
               No Projects Yet
             </h2>
             <p className='mt-2 text-gray-600'>
-              Click &quot;Contact&quot; in the navigation to start a new project
-              request.
+              Click &quot;Contact&quot; in the navigation to start a new project request.
             </p>
           </div>
         )}
