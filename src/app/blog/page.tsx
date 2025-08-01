@@ -12,10 +12,9 @@ interface Post {
 }
 
 async function getPosts(): Promise<Post[]> {
-  // Check if adminDb was initialized before using it.
   if (!adminDb) {
     console.error("Firestore Admin is not initialized. Cannot fetch posts.");
-    return []; // Return an empty array to prevent crashing the page.
+    return [];
   }
 
   const snapshot = await adminDb
@@ -33,20 +32,23 @@ export default async function BlogPage() {
   const posts = await getPosts();
 
   return (
-    <div className='min-h-screen bg-gray-900 text-white p-8'>
+    <div className='min-h-screen bg-gray-100 text-gray-900 p-8'>
       <div className='max-w-4xl mx-auto'>
-        <h1 className='text-5xl font-extrabold mb-8 text-center text-cyan-400'>
-          Our Blog
-        </h1>
+        <header className='text-center mb-12'>
+          <h1 className='text-5xl font-extrabold text-blue-600'>Our Blog</h1>
+          <p className='mt-4 text-lg text-gray-600'>
+            Insights, news, and updates from our team.
+          </p>
+        </header>
         <div className='space-y-8'>
           {posts.length > 0 ? (
             posts.map((post) => (
               <Link href={`/blog/${post.slug}`} key={post.id}>
-                <div className='block p-6 bg-gray-800 rounded-lg shadow-lg hover:bg-gray-700 transition'>
-                  <h2 className='text-3xl font-bold text-white'>
+                <div className='block p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow border border-gray-200'>
+                  <h2 className='text-3xl font-bold text-gray-900'>
                     {post.title}
                   </h2>
-                  <p className='text-gray-400 mt-2'>
+                  <p className='text-gray-500 mt-2'>
                     Published on{" "}
                     {new Date(
                       post.createdAt._seconds * 1000
@@ -56,9 +58,13 @@ export default async function BlogPage() {
               </Link>
             ))
           ) : (
-            <p className='text-center text-gray-400'>
-              No blog posts found. Come back later.
-            </p>
+            <div className='text-center bg-white p-10 rounded-lg shadow-md'>
+              <h3 className='text-xl font-bold text-gray-900'>No Posts Yet</h3>
+              <p className='mt-2 text-gray-600'>
+                There are no blog posts to display right now. Please check back
+                later!
+              </p>
+            </div>
           )}
         </div>
       </div>
