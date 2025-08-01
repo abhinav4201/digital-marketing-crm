@@ -1,23 +1,23 @@
 "use client";
-import { useAuth } from "../providers/AuthProvider";
-import { db } from "../lib/firebase";
 import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-  Timestamp,
-  limit,
-  startAfter,
   DocumentData,
   QueryDocumentSnapshot,
+  Timestamp,
+  collection,
   endBefore,
+  limit,
   limitToLast,
+  onSnapshot,
+  orderBy,
+  query,
+  startAfter,
 } from "firebase/firestore";
-import { useEffect, useState, useCallback } from "react";
-import Papa from "papaparse";
 import Link from "next/link";
-import { FaBell, FaDownload, FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import Papa from "papaparse";
+import { useCallback, useEffect, useState } from "react";
+import { FaArrowLeft, FaArrowRight, FaBell, FaDownload } from "react-icons/fa";
+import { db } from "../lib/firebase";
+import { useAuth } from "../providers/AuthProvider";
 
 interface Request {
   id: string;
@@ -28,10 +28,11 @@ interface Request {
   createdAt: Timestamp;
   status?: string;
   lastUpdatedBy?: "user" | "admin";
+  adminHasUnreadUpdate?: boolean;
 }
 
 const AdminPage = () => {
-  const { isAdmin } = useAuth();
+  const { role } = useAuth();
   const [activeTab, setActiveTab] = useState<"allProjects" | "filter">(
     "allProjects"
   );
@@ -58,7 +59,7 @@ const AdminPage = () => {
   const PAGE_SIZE = 10;
 
   const fetchInitialProjects = useCallback(() => {
-    if (!isAdmin) return;
+    if (role !== "admin") return;
     setLoadingProjects(true);
     const q = query(
       collection(db, "requests"),
@@ -75,10 +76,10 @@ const AdminPage = () => {
       setIsNextPageAvailable(querySnapshot.size === PAGE_SIZE);
       setLoadingProjects(false);
     });
-  }, [isAdmin]);
+  }, [role]);
 
   const fetchNextPage = () => {
-    if (!isAdmin || !lastVisible) return;
+    if (role !== "admin" || !lastVisible) return;
     setLoadingProjects(true);
     const q = query(
       collection(db, "requests"),
@@ -100,7 +101,7 @@ const AdminPage = () => {
   };
 
   const fetchPrevPage = () => {
-    if (!isAdmin || !firstVisible) return;
+    if (role !== "admin" || !firstVisible) return;
     setLoadingProjects(true);
     const q = query(
       collection(db, "requests"),
@@ -122,7 +123,7 @@ const AdminPage = () => {
   };
 
   const fetchAllForFilter = useCallback(() => {
-    if (!isAdmin) return;
+    if (role !== "admin") return;
     setLoadingFilter(true);
     const q = query(collection(db, "requests"), orderBy("createdAt", "desc"));
     return onSnapshot(q, (querySnapshot) => {
@@ -132,11 +133,11 @@ const AdminPage = () => {
       setAllRequestsForFilter(allReqs);
       setLoadingFilter(false);
     });
-  }, [isAdmin]);
+  }, [role]);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
-    if (isAdmin) {
+    if (role === "admin") {
       if (activeTab === "allProjects") {
         unsubscribe = fetchInitialProjects();
       } else if (activeTab === "filter") {
@@ -146,7 +147,7 @@ const AdminPage = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isAdmin, activeTab, fetchInitialProjects, fetchAllForFilter]);
+  }, [role, activeTab, fetchInitialProjects, fetchAllForFilter]);
 
   const handleFilter = () => {
     let filtered = allRequestsForFilter;
@@ -196,7 +197,7 @@ const AdminPage = () => {
     }
   };
 
-  if (!isAdmin) {
+  if (role !== "admin") {
     return (
       <div className='min-h-screen flex items-center justify-center'>
         <p className='text-red-500'>
@@ -258,7 +259,7 @@ const AdminPage = () => {
         </thead>
         <tbody className='bg-white divide-y divide-gray-200'>
           {data.map((req, index) => {
-            const hasNewUpdate = req.lastUpdatedBy === "user";
+            const hasNewUpdate = req.adminHasUnreadUpdate === true;
             return (
               <tr
                 key={req.id}
@@ -310,16 +311,64 @@ const AdminPage = () => {
     <div className='min-h-screen p-4 sm:p-8'>
       <div className='max-w-7xl mx-auto'>
         <header className='bg-[var(--surface)] shadow-sm rounded-lg p-6 mb-8'>
-          <div className='flex justify-between items-center'>
-            <h1 className='text-3xl sm:text-4xl font-bold text-[var(--foreground)]'>
-              Admin Panel
-            </h1>
-            <Link
-              href='/admin/blog'
-              className='bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-5 rounded-lg transition-colors shadow-sm'
-            >
-              Manage Blog
-            </Link>
+          <div className='flex flex-col sm:flex-row justify-between sm:items-center'>
+            <div>
+              <h1 className='text-3xl sm:text-4xl font-bold text-[var(--foreground)]'>
+                Admin Panel
+              </h1>
+              <p className='text-gray-500 mt-2'>Welcome, Admin!</p>
+            </div>
+            {/* CORRECTED: This container now wraps on mobile and provides consistent gaps */}
+            <div className='mt-4 sm:mt-0 flex flex-wrap items-center gap-2'>
+              <Link
+                href='/admin/attendance'
+                className='bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-sm'
+              >
+                Attendance
+              </Link>
+              <Link
+                href='/admin/analytics'
+                className='bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-sm'
+              >
+                Analytics
+              </Link>
+              <Link
+                href='/admin/tickets'
+                className='bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-sm'
+              >
+                Tickets
+              </Link>
+              <Link
+                href='/admin/campaigns'
+                className='bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-sm'
+              >
+                Campaigns
+              </Link>
+              <Link
+                href='/admin/templates'
+                className='bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-sm'
+              >
+                Templates
+              </Link>
+              <Link
+                href='/admin/pipeline'
+                className='bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-sm'
+              >
+                Pipeline
+              </Link>
+              <Link
+                href='/admin/users'
+                className='bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-sm'
+              >
+                Users
+              </Link>
+              <Link
+                href='/admin/blog'
+                className='bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-sm'
+              >
+                Blog
+              </Link>
+            </div>
           </div>
         </header>
 

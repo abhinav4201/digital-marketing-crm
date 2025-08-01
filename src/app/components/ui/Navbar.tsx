@@ -1,16 +1,16 @@
 "use client";
-import Link from "next/link";
-import Image from "next/image";
-import { useAuth } from "../../providers/AuthProvider";
-import { auth, provider } from "../../lib/firebase";
 import { signInWithPopup, signOut } from "firebase/auth";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaGoogle, FaUserCircle } from "react-icons/fa";
 import { useState } from "react";
+import { FaGoogle, FaUserCircle } from "react-icons/fa";
+import { auth, provider } from "../../lib/firebase";
+import { useAuth } from "../../providers/AuthProvider";
 import { useModalStore } from "../../store/useModalStore";
 
 const Navbar = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, role } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { openModal } = useModalStore();
@@ -62,7 +62,21 @@ const Navbar = () => {
               </button>
               {user && (
                 <Link
-                  href={isAdmin ? "/admin" : "/dashboard"}
+                  href='/dashboard/tickets'
+                  className='hover:bg-slate-700 px-3 py-2 rounded-md text-sm font-medium'
+                >
+                  My Tickets
+                </Link>
+              )}
+              {user && (
+                <Link
+                  href={
+                    role === "admin"
+                      ? "/admin"
+                      : (role === "sales_rep"
+                      ? "/admin/pipeline"
+                      : "/dashboard"
+              )}
                   className='hover:bg-slate-700 px-3 py-2 rounded-md text-sm font-medium'
                 >
                   Dashboard
@@ -151,7 +165,21 @@ const Navbar = () => {
             </button>
             {user && (
               <Link
-                href={isAdmin ? "/admin" : "/dashboard"}
+                href='/dashboard/tickets'
+                className='hover:bg-slate-700 px-3 py-2 rounded-md text-sm font-medium'
+              >
+                My Tickets
+              </Link>
+            )}
+            {user && (
+              <Link
+                href={
+                  role === "admin"
+                    ? "/admin"
+                    : (role === "sales_rep"
+                    ? "/admin/pipeline"
+                    : "/dashboard"
+            )}
                 onClick={() => setMobileMenuOpen(false)}
                 className='hover:bg-slate-700 block px-3 py-2 rounded-md text-base font-medium'
               >
@@ -166,4 +194,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

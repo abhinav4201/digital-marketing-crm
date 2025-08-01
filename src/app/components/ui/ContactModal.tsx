@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // File: app/components/ui/ContactModal.tsx
 
 "use client";
@@ -87,6 +87,17 @@ const ContactFormView = ({
           placeholder='Email address'
         />
       </div>
+      {/* ADDED: Company Input */}
+      <div>
+        <input
+          type='text'
+          name='company'
+          value={formData.company}
+          onChange={handleChange}
+          className='block w-full shadow-sm py-3 px-4 placeholder-gray-400 bg-gray-900 border-gray-700 rounded-md focus:ring-cyan-500 focus:border-cyan-500'
+          placeholder='Company Name (Optional)'
+        />
+      </div>
       <div>
         <div className='flex rounded-md shadow-sm'>
           <select
@@ -161,6 +172,17 @@ const ContactFormView = ({
           placeholder='Your Message'
         ></textarea>
       </div>
+      {/* ADDED: Tags Input */}
+      <div>
+        <input
+          type='text'
+          name='tags'
+          value={formData.tags}
+          onChange={handleChange}
+          className='block w-full shadow-sm py-3 px-4 placeholder-gray-400 bg-gray-900 border-gray-700 rounded-md focus:ring-cyan-500 focus:border-cyan-500'
+          placeholder='Tags (e.g., urgent, website, marketing)'
+        />
+      </div>
       <div className='mt-6'>
         <button
           type='submit'
@@ -184,6 +206,8 @@ const ContactModal = () => {
     email: "",
     phone: "",
     message: "",
+    company: "", // Added state
+    tags: "", // Added state
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -199,7 +223,14 @@ const ContactModal = () => {
 
   const resetForm = useCallback(
     (shouldCloseModal = true) => {
-      setFormData({ name: "", email: "", phone: "", message: "" });
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        message: "",
+        company: "",
+        tags: "",
+      });
       setError("");
       setSubmissionComplete(false);
       setSubmitting(false);
@@ -280,10 +311,6 @@ const ContactModal = () => {
     if (name === "phone" && !/^\d*$/.test(value)) return;
 
     setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (name === "phone" && /^\d{10}$/.test(value) && !isOtpSent) {
-      handleSendOtp(value);
-    }
   };
 
   const handleVerifyOtp = () => {
@@ -312,8 +339,15 @@ const ContactModal = () => {
     setSubmitting(true);
     try {
       const idToken = await user.getIdToken();
+      // Prepare tags array from comma-separated string
+      const tagsArray = formData.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
       const submissionData = {
         ...formData,
+        tags: tagsArray, // Send as an array
         phone: `${countryCode}${formData.phone}`,
       };
 
@@ -329,7 +363,6 @@ const ContactModal = () => {
       const responseData = await response.json();
 
       if (response.ok) {
-        // On success, close the modal and redirect to the new project page
         closeModal();
         router.push(`/dashboard/${responseData.requestId}`);
       } else {
