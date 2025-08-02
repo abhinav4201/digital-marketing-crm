@@ -1,0 +1,92 @@
+[
+  {
+    "quote": "This agency transformed our online presence. Their team is professional, creative, and delivered results beyond our expectations. A true partner in our growth.",
+    "name": "Priya Sharma",
+    "company": "Innovate Solutions Ltd.",
+    "projectName": "Innovate Solutions - Web & SEO",
+    "status": "Live Project",
+    "rating": 5,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#E0F2FE'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#0C4A6E'>IS</text></svg>"
+  },
+  {
+    "quote": "The new e-commerce platform they built for us is fast, beautiful, and incredibly easy to manage. Our sales have increased by 40% since launch!",
+    "name": "Raj Patel",
+    "company": "Fashion Forward Inc.",
+    "projectName": "E-commerce Hub",
+    "status": "Live Project",
+    "rating": 5,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#D1FAE5'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#065F46'>FF</text></svg>"
+  },
+  {
+    "quote": "Working with them on our new analytics dashboard has been a seamless experience. The project is on track and the communication has been outstanding.",
+    "name": "Anjali Mehta",
+    "company": "Data Insights Co.",
+    "projectName": "Project Alpha Analytics",
+    "status": "Ongoing",
+    "rating": 4,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#FEE2E2'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#991B1B'>DI</text></svg>"
+  },
+  {
+    "quote": "Their digital marketing strategy doubled our lead generation in just three months. I cannot recommend them enough for their expertise and dedication.",
+    "name": "Vikram Singh",
+    "company": "Growth Partners",
+    "projectName": "Lead Gen Campaign",
+    "status": "Live Project",
+    "rating": 5,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#FEF3C7'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#92400E'>GP</text></svg>"
+  },
+  {
+    "quote": "The social media designs are stunning and have completely elevated our brand's look and feel. Engagement is through the roof!",
+    "name": "Sunita Rao",
+    "company": "Luxe Living",
+    "projectName": "Social Media Revamp",
+    "status": "Live Project",
+    "rating": 4,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#E5E7EB'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#4B5563'>LL</text></svg>"
+  },
+  {
+    "quote": "A highly skilled and responsive team. They understood our vision for the web app perfectly and are executing it flawlessly. The project is still in progress, but we are thrilled.",
+    "name": "Amit Kumar",
+    "company": "TechStream",
+    "projectName": "SaaS Platform Development",
+    "status": "Ongoing",
+    "rating": 5,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#EDE9FE'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#5B21B6'>TS</text></svg>"
+  },
+  {
+    "quote": "Their SEO work has been a game-changer. We are now ranking on the first page for our most important keywords, which was unimaginable a year ago.",
+    "name": "Neha Desai",
+    "company": "HealthFirst Clinics",
+    "projectName": "Organic SEO Strategy",
+    "status": "Live Project",
+    "rating": 5,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#D1FAE5'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#065F46'>HF</text></svg>"
+  },
+  {
+    "quote": "The content they produce is top-notch—well-researched, engaging, and perfectly aligned with our brand voice. Our blog traffic has tripled.",
+    "name": "Rohan Gupta",
+    "company": "FinanceWise",
+    "projectName": "Content Marketing Retainer",
+    "status": "Live Project",
+    "rating": 4,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#DBEAFE'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#1E40AF'>FW</text></svg>"
+  },
+  {
+    "quote": "We're in the early stages of our brand strategy project, and the insights and direction they've provided are already invaluable. Excited for what's next.",
+    "name": "Isha Reddy",
+    "company": "Aura Cosmetics",
+    "projectName": "Brand Strategy Blueprint",
+    "status": "Ongoing",
+    "rating": 5,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#FCE7F3'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#9D2667'>AC</text></svg>"
+  },
+  {
+    "quote": "An exceptional team that truly feels like an extension of our own. Their PPC campaigns have consistently delivered an impressive return on ad spend.",
+    "name": "Deepak Iyer",
+    "company": "Global Exports",
+    "projectName": "PPC Campaign Management",
+    "status": "Live Project",
+    "rating": 5,
+    "svgImage": "<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='50' fill='#E0E7FF'/><text x='50' y='55' font-size='40' text-anchor='middle' fill='#3730A3'>GE</text></svg>"
+  }
+]

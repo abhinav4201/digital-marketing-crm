@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Sarkari Mock Test",
+    "description": "An online platform for government exam preparation.",
+    "imageUrl": "https://raw.githubusercontent.com/abhinav4201/digital-marketing-crm/main/public/sarkari-mock-test.svg",
+    "link": "https://sarkari-mock-test.vercel.app/"
+  },
+  {
+    "title": "Project Alpha",
+    "description": "A cutting-edge data analytics dashboard for enterprise.",
+    "imageUrl": "https://raw.githubusercontent.com/abhinav4201/digital-marketing-crm/main/public/project-alpha.svg",
+    "link": "#"
+  },
+  {
+    "title": "E-commerce Hub",
+    "description": "A scalable online store for a modern fashion brand.",
+    "imageUrl": "https://raw.githubusercontent.com/abhinav4201/digital-marketing-crm/main/public/ecommerce-hub.svg",
+    "link": "#"
+  }
+]

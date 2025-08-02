@@ -22,3 +22,23 @@ body {
   color: var(--foreground);
 }
 
+/* --- Testimonial Carousel Animation (Corrected) --- */
+.animate-marquee {
+  /* Adjust duration to control speed. Higher value = slower scroll. */
+  animation: marquee 120s linear infinite;
+}
+
+/* This pauses the animation when the user hovers over the container */
+.group:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  /* Animate to -50% because our track is 200% wide (original + duplicate) */
+  100% {
+    transform: translateX(-50%);
+  }
+}

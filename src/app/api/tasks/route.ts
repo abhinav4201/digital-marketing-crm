@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 1. Authenticate and authorize admin
+    // 1. Authenticate and authorize admin/sales_rep
     const authorization = req.headers.get("Authorization");
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,37 +19,39 @@ export async function POST(req: NextRequest) {
     const idToken = authorization.split("Bearer ")[1];
     const decodedToken = await adminAuth.verifyIdToken(idToken);
 
-    const adminDoc = await adminDb
+    const userDoc = await adminDb
       .collection("users")
       .doc(decodedToken.uid)
       .get();
-    if (!adminDoc.exists || adminDoc.data()?.role !== "admin") {
+    const userData = userDoc.data();
+    if (
+      !userData ||
+      (userData.role !== "admin" && userData.role !== "sales_rep")
+    ) {
       return NextResponse.json(
-        { error: "Forbidden: Not an admin" },
+        { error: "Forbidden: Insufficient permissions" },
         { status: 403 }
       );
     }
 
     // 2. Get task data from request body
-    const { requestId, title } = await req.json();
-    if (!requestId || !title) {
+    const { requestId, title, assignedTo } = await req.json();
+    if (!requestId || !title || !assignedTo) {
       return NextResponse.json(
-        { error: "Missing requestId or title" },
+        { error: "Missing requestId, title, or assignedTo" },
         { status: 400 }
       );
     }
 
-    // 3. Add new task to the 'tasks' subcollection of the request
-    const newTaskRef = await adminDb
-      .collection("requests")
-      .doc(requestId)
-      .collection("tasks")
-      .add({
-        title,
-        isComplete: false,
-        createdAt: Timestamp.now(),
-        createdBy: decodedToken.uid,
-      });
+    // 3. Add new task to the TOP-LEVEL 'tasks' collection
+    const newTaskRef = await adminDb.collection("tasks").add({
+      requestId,
+      title,
+      assignedTo, // The UID of the user the task is for
+      isComplete: false,
+      createdAt: Timestamp.now(),
+      createdBy: decodedToken.uid, // The UID of the user who created the task
+    });
 
     return NextResponse.json(
       { message: "Task created successfully", taskId: newTaskRef.id },

@@ -18,6 +18,7 @@ const Navbar = () => {
   const handleSignIn = async () => {
     try {
       await signInWithPopup(auth, provider);
+      setMobileMenuOpen(false); // Close menu on action
     } catch (error) {
       console.error("Error signing in with Google: ", error);
     }
@@ -25,12 +26,14 @@ const Navbar = () => {
 
   const handleSignOut = async () => {
     await signOut(auth);
+    setMobileMenuOpen(false); // Close menu on action
     router.push("/");
   };
 
   const navLinks = [
     { href: "/#services", text: "Services" },
-    { href: "/#portfolio", text: "Portfolio" },
+    // { href: "/#portfolio", text: "Portfolio" },
+    { href: "/#about", text: "About Us" },
     { href: "/blog", text: "Blog" },
   ];
 
@@ -40,7 +43,7 @@ const Navbar = () => {
         <div className='flex items-center justify-between h-16'>
           <div className='flex-shrink-0'>
             <Link href='/' className='text-2xl font-bold text-cyan-400'>
-              Agency.
+              Royal Screen
             </Link>
           </div>
           <div className='hidden md:block'>
@@ -73,10 +76,10 @@ const Navbar = () => {
                   href={
                     role === "admin"
                       ? "/admin"
-                      : (role === "sales_rep"
-                      ? "/admin/pipeline"
+                      : role === "sales_rep"
+                      ? "/sales/dashboard"
                       : "/dashboard"
-              )}
+                  }
                   className='hover:bg-slate-700 px-3 py-2 rounded-md text-sm font-medium'
                 >
                   Dashboard
@@ -166,7 +169,8 @@ const Navbar = () => {
             {user && (
               <Link
                 href='/dashboard/tickets'
-                className='hover:bg-slate-700 px-3 py-2 rounded-md text-sm font-medium'
+                onClick={() => setMobileMenuOpen(false)}
+                className='hover:bg-slate-700 block px-3 py-2 rounded-md text-base font-medium'
               >
                 My Tickets
               </Link>
@@ -176,16 +180,54 @@ const Navbar = () => {
                 href={
                   role === "admin"
                     ? "/admin"
-                    : (role === "sales_rep"
+                    : role === "sales_rep"
                     ? "/admin/pipeline"
                     : "/dashboard"
-            )}
+                }
                 onClick={() => setMobileMenuOpen(false)}
                 className='hover:bg-slate-700 block px-3 py-2 rounded-md text-base font-medium'
               >
                 Dashboard
               </Link>
             )}
+
+            {/* --- CORRECTED SECTION --- */}
+            <div className='border-t border-slate-700 mt-4 pt-4'>
+              {user ? (
+                <div className='flex items-center justify-between px-3 py-2'>
+                  <div className='flex items-center'>
+                    {user.photoURL ? (
+                      <Image
+                        src={user.photoURL}
+                        alt='user photo'
+                        width={32}
+                        height={32}
+                        className='rounded-full'
+                      />
+                    ) : (
+                      <FaUserCircle className='h-8 w-8' />
+                    )}
+                    <span className='ml-3 font-medium'>
+                      {user.displayName || "User"}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className='bg-cyan-500 hover:bg-cyan-600 px-3 py-2 rounded-md text-sm font-medium'
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleSignIn}
+                  className='w-full bg-cyan-500 hover:bg-cyan-600 px-4 py-2 mt-2 rounded-md text-sm font-medium flex items-center justify-center'
+                >
+                  <FaGoogle className='mr-2' /> Sign In with Google
+                </button>
+              )}
+            </div>
+            {/* --- END OF CORRECTION --- */}
           </div>
         </div>
       )}

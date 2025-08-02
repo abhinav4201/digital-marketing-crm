@@ -127,14 +127,14 @@ const CreateBlogPage = () => {
               >
                 SVG Image Code (Optional)
               </label>
-              <textarea
+              <input
+                type='url'
                 id='svg'
-                rows={6}
                 value={svg}
                 onChange={(e) => setSvg(e.target.value)}
-                className='mt-1 block w-full border-gray-300 rounded-md shadow-sm p-3 font-mono text-sm focus:ring-blue-500 focus:border-blue-500'
-                placeholder='<svg>...</svg>'
-              ></textarea>
+                className='mt-1 block w-full border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500'
+                placeholder='https://your-domain.com/image.svg'
+              />
             </div>
             <div>
               <label

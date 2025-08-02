@@ -11,7 +11,7 @@ import InfoModal from "./components/ui/InfoModal";
 // const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Digital Agency",
+  title: "Royal Screen",
   description: "Your one-stop for digital solutions.",
 };
 

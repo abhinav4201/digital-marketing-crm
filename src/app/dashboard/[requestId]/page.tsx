@@ -11,6 +11,7 @@ import {
   collection,
   query,
   orderBy,
+  where,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../providers/AuthProvider";
@@ -69,6 +70,7 @@ interface Task {
   title: string;
   isComplete: boolean;
   createdAt: Timestamp;
+  assignedTo: string;
 }
 
 interface Invoice {
@@ -556,14 +558,34 @@ const ProjectDetailPage = () => {
     role: string;
   }) => {
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
     const [newTaskTitle, setNewTaskTitle] = useState("");
+    const [assignedTo, setAssignedTo] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { openModal: openInfoModal } = useInfoModalStore();
 
     useEffect(() => {
       if (role !== "admin") return;
       const q = query(
-        collection(db, "requests", requestId, "tasks"),
+        collection(db, "users"),
+        where("role", "in", ["admin", "sales_rep"])
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setUsers(
+          snapshot.docs.map((doc) => ({
+            id: doc.id,
+            name: doc.data().displayName || doc.data().email,
+          }))
+        );
+      });
+      return () => unsubscribe();
+    }, [role]);
+
+    useEffect(() => {
+      if (!requestId) return;
+      const q = query(
+        collection(db, "tasks"),
+        where("requestId", "==", requestId),
         orderBy("createdAt", "desc")
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -572,24 +594,30 @@ const ProjectDetailPage = () => {
         );
       });
       return () => unsubscribe();
-    }, [requestId, role]);
+    }, [requestId]);
 
     const handleAddTask = async (e: FormEvent) => {
       e.preventDefault();
-      if (!newTaskTitle.trim() || !user) return;
+      if (!newTaskTitle.trim() || !assignedTo || !user) {
+        openInfoModal(
+          "Error",
+          "Please provide a title and assign the task to a user."
+        );
+        return;
+      }
       setIsSubmitting(true);
       try {
         const idToken = await user.getIdToken();
-        const response = await fetch("/api/tasks", {
+        await fetch("/api/tasks", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${idToken}`,
           },
-          body: JSON.stringify({ requestId, title: newTaskTitle }),
+          body: JSON.stringify({ requestId, title: newTaskTitle, assignedTo }),
         });
-        if (!response.ok) throw new Error("Failed to add task");
         setNewTaskTitle("");
+        setAssignedTo("");
       } catch (error) {
         openInfoModal("Error", "Could not add the task.");
       } finally {
@@ -618,27 +646,48 @@ const ProjectDetailPage = () => {
       }
     };
 
-    if (role !== "admin") return null;
+    if (role !== "admin" && role !== "sales_rep") return null;
 
     return (
       <div className='bg-white p-6 rounded-lg shadow-md border border-gray-200'>
-        <h2 className='text-2xl font-semibold mb-4 text-gray-900'>Tasks</h2>
-        <form onSubmit={handleAddTask} className='flex gap-2 mb-4'>
-          <input
-            type='text'
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            placeholder='Add a new task...'
-            className='flex-grow border-gray-300 rounded-md shadow-sm p-2'
-          />
-          <button
-            type='submit'
-            disabled={isSubmitting || !newTaskTitle.trim()}
-            className='bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-lg disabled:bg-gray-400 flex items-center justify-center'
+        <h2 className='text-2xl font-semibold mb-4 text-gray-900'>
+          Project Tasks
+        </h2>
+        {role === "admin" && (
+          <form
+            onSubmit={handleAddTask}
+            className='space-y-4 mb-6 p-4 border rounded-lg'
           >
-            <Plus size={20} />
-          </button>
-        </form>
+            <div className='flex gap-4'>
+              <input
+                type='text'
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder='New task title...'
+                className='flex-grow border-gray-300 rounded-md shadow-sm p-2'
+              />
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className='border-gray-300 rounded-md shadow-sm p-2'
+              >
+                <option value=''>Assign to...</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type='submit'
+              disabled={isSubmitting}
+              className='w-full bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-lg disabled:bg-gray-400 flex items-center justify-center'
+            >
+              <Plus size={20} className='mr-2' /> Add Task
+            </button>
+          </form>
+        )}
         <div className='space-y-3'>
           {tasks.map((task) => (
             <div
@@ -651,7 +700,8 @@ const ProjectDetailPage = () => {
             >
               <button
                 onClick={() => handleToggleTask(task)}
-                className={`mr-4 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                disabled={user?.uid !== task.assignedTo && role !== "admin"}
+                className={`mr-4 w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 disabled:opacity-50 ${
                   task.isComplete
                     ? "bg-green-500 border-green-500"
                     : "border-gray-300"
@@ -671,6 +721,7 @@ const ProjectDetailPage = () => {
       </div>
     );
   };
+
   const BillingPanel = ({
     request,
     user,
