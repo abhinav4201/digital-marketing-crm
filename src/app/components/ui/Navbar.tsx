@@ -181,7 +181,7 @@ const Navbar = () => {
                   role === "admin"
                     ? "/admin"
                     : role === "sales_rep"
-                    ? "/admin/pipeline"
+                    ? "/sales/dashboard"
                     : "/dashboard"
                 }
                 onClick={() => setMobileMenuOpen(false)}

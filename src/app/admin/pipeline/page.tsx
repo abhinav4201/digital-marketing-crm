@@ -80,7 +80,7 @@ const PipelinePage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (role !== "admin") {
+    if (role !== "admin" && role !== "sales_rep") {
       setLoading(false);
       return;
     }
