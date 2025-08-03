@@ -1,0 +1,8 @@
+# Allow all crawlers full access
+User-agent: *
+Disallow: /admin/ # Disallow crawling of admin pages
+Disallow: /sales/ # Disallow crawling of sales pages
+Disallow: /support/ # Disallow crawling of support pages
+
+# Point crawlers to the sitemap
+Sitemap: https://your-domain.com/sitemap.xml

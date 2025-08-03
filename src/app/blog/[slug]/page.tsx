@@ -67,8 +67,25 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   const htmlContent = md.render(post.content);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    datePublished: new Date(post.createdAt._seconds * 1000).toISOString(),
+    dateModified: new Date(post.createdAt._seconds * 1000).toISOString(),
+    description: post.content.substring(0, 155),
+    author: {
+      "@type": "Organization",
+      name: "Royal Screen",
+    },
+  };
+
   return (
     <div className='min-h-screen bg-gray-900 text-white p-4 sm:p-8'>
+      <script
+        type='application/ld+json'
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className='max-w-4xl mx-auto'>
         <article className='prose prose-sm sm:prose-base prose-invert lg:prose-lg mx-auto'>
           <h1 className='text-3xl sm:text-5xl font-extrabold text-cyan-400'>
