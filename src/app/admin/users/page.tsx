@@ -16,6 +16,7 @@ import {
   QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import { FaEdit, FaSave, FaTimes } from "react-icons/fa";
 
 interface UserData {
   id: string;
@@ -38,6 +39,45 @@ const UserManagementPage = () => {
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [page, setPage] = useState(1);
   const [isNextPageAvailable, setIsNextPageAvailable] = useState(true);
+
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<UserRole>("user");
+
+  const handleEdit = (user: UserData) => {
+    setEditingUserId(user.id);
+    setSelectedRole(user.role);
+  };
+
+  const handleCancel = () => {
+    setEditingUserId(null);
+  };
+
+  const handleSaveRole = async (userIdToUpdate: string) => {
+    if (!user) {
+      alert("You must be logged in to perform this action.");
+      return;
+    }
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/users/update-role", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ userIdToUpdate, newRole: selectedRole }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update role.");
+      }
+      setEditingUserId(null); // Exit editing mode on success
+    } catch (err: any) {
+      console.error("Error updating role:", err);
+      alert(`Error: ${err.message}`);
+    }
+  };
 
   useEffect(() => {
     if (role !== "admin") {
@@ -209,23 +249,49 @@ const UserManagementPage = () => {
                       {u.email}
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-                      <select
-                        value={u.role}
-                        onChange={(e) =>
-                          handleRoleChange(u.id, e.target.value as UserRole)
-                        }
-                        className='p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
-                        disabled={user?.uid === u.id}
-                      >
-                        <option value='user'>User</option>
-                        <option value='sales_rep'>Sales Rep</option>
-                        <option value='support_agent'>Support Agent</option>
-                        <option value='admin'>Admin</option>
-                      </select>
-                      {user?.uid === u.id && (
-                        <p className='text-xs text-gray-400 mt-1'>
-                          Cannot change your own role.
-                        </p>
+                      {editingUserId === u.id ? (
+                        <div className='flex items-center gap-2'>
+                          <select
+                            value={selectedRole}
+                            onChange={(e) =>
+                              setSelectedRole(e.target.value as UserRole)
+                            }
+                            className='p-2 border border-gray-300 rounded-md'
+                          >
+                            <option value='user'>User</option>
+                            <option value='sales_rep'>Sales Rep</option>
+                            <option value='support_agent'>Support Agent</option>
+                            <option value='admin'>Admin</option>
+                          </select>
+                          <button
+                            onClick={() => handleSaveRole(u.id)}
+                            className='p-2 text-green-600 hover:text-green-800'
+                          >
+                            <FaSave />
+                          </button>
+                          <button
+                            onClick={handleCancel}
+                            className='p-2 text-red-600 hover:text-red-800'
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className='flex items-center gap-4'>
+                          <span>{u.role}</span>
+                          <button
+                            onClick={() => handleEdit(u)}
+                            disabled={user?.uid === u.id}
+                            className='p-2 text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed'
+                          >
+                            <FaEdit />
+                          </button>
+                          {user?.uid === u.id && (
+                            <p className='text-xs text-gray-400 mt-1'>
+                              (Cannot change own role)
+                            </p>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

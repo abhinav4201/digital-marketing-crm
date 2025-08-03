@@ -1,7 +1,6 @@
 import { adminDb } from "../../lib/firestore.server";
 import { notFound } from "next/navigation";
 import MarkdownIt from "markdown-it";
-// import Image from "next/image";
 import { Metadata } from "next";
 
 const md = new MarkdownIt();
@@ -11,32 +10,17 @@ interface Post {
   content: string;
   svg?: string;
   youtubeId?: string;
-  createdAt: { _seconds: number };
-}
-
-// **NEW**: Dynamic Metadata Function
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}): Promise<Metadata> {
-  const post = await getPost(params.slug);
-  if (!post) {
-    return {
-      title: "Post Not Found",
-      description: "The blog post you are looking for does not exist.",
-    };
-  }
-  return {
-    title: `${post.title} | Our Blog`,
-    description: post.content.substring(0, 155), // Use first 155 chars for meta description
+  createdAt: {
+    _seconds: number;
   };
 }
 
 async function getPost(slug: string): Promise<Post | null> {
   if (!adminDb) {
+    console.error("Firestore Admin is not initialized. Cannot fetch post.");
     return null;
   }
+
   const snapshot = await adminDb
     .collection("blogs")
     .where("slug", "==", slug)
@@ -48,13 +32,32 @@ async function getPost(slug: string): Promise<Post | null> {
   return snapshot.docs[0].data() as Post;
 }
 
+// Dynamic Metadata Function
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPost(slug);
+  if (!post) {
+    return {
+      title: "Post Not Found",
+      description: "The blog post you are looking for does not exist.",
+    };
+  }
+  return {
+    title: `${post.title} | Our Blog`,
+    description: post.content.substring(0, 155),
+  };
+}
+
 // Define PageProps interface for Next.js dynamic route
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
 export default async function BlogPostPage({ params }: PageProps) {
-  // Await the params to resolve the promise
   const { slug } = await params;
   const post = await getPost(slug);
 
@@ -75,6 +78,7 @@ export default async function BlogPostPage({ params }: PageProps) {
             Published on{" "}
             {new Date(post.createdAt._seconds * 1000).toLocaleDateString()}
           </p>
+
           <div className='grid grid-cols-1 md:grid-cols-2 gap-8 my-8 not-prose'>
             {post.svg && (
               <div className='bg-gray-800 p-4 rounded-lg flex items-center justify-center'>
@@ -97,6 +101,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               </div>
             )}
           </div>
+
           <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
         </article>
       </div>

@@ -20,17 +20,25 @@ interface AttendanceRecord {
 }
 
 const AttendanceWidget = () => {
-  const { user } = useAuth();
+  // THE FIX: Import `loading` from the auth context
+  const { user, loading: authLoading } = useAuth();
   const { openModal: openInfoModal } = useInfoModalStore();
   const [attendance, setAttendance] = useState<AttendanceRecord | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [widgetLoading, setWidgetLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
+    // THE FIX: Do not run the effect until the main AuthProvider is done loading.
+    if (authLoading) {
       return;
     }
+
+    if (!user) {
+      setAttendance(null);
+      setWidgetLoading(false);
+      return;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -47,11 +55,12 @@ const AttendanceWidget = () => {
       } else {
         setAttendance(null);
       }
-      setLoading(false);
+      setWidgetLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user]);
+    // THE FIX: Add `authLoading` to the dependency array.
+  }, [user, authLoading]);
 
   const handleClockIn = async () => {
     if (!user) return;
@@ -97,7 +106,7 @@ const AttendanceWidget = () => {
     }
   };
 
-  if (loading)
+  if (widgetLoading)
     return <div className='p-4 text-center'>Loading attendance...</div>;
 
   return (

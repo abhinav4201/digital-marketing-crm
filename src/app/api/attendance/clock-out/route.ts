@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 1. Authenticate the user
     const authorization = req.headers.get("Authorization");
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,17 +19,18 @@ export async function POST(req: NextRequest) {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const { uid } = decodedToken;
 
-    // 2. Find today's clock-in record
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
+    // **THE FIX IS HERE**
+    // Query by the 'date' field instead of 'createdAt'
     const attendanceQuery = await adminDb
       .collection("attendance")
       .where("userId", "==", uid)
-      .where("createdAt", ">=", Timestamp.fromDate(today))
-      .where("createdAt", "<", Timestamp.fromDate(tomorrow))
+      .where("date", ">=", Timestamp.fromDate(today))
+      .where("date", "<", Timestamp.fromDate(tomorrow))
       .limit(1)
       .get();
 
@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Update the record with clock-out time
     const clockOutTime = Timestamp.now();
     await attendanceDoc.ref.update({
       clockOutTime: clockOutTime,

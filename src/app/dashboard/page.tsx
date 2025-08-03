@@ -1,19 +1,19 @@
 "use client";
-import { useAuth } from "../providers/AuthProvider";
-import { db } from "../lib/firebase";
 import {
   collection,
-  query,
-  where,
   onSnapshot,
   orderBy,
+  query,
   Timestamp,
+  where,
 } from "firebase/firestore";
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FaBell, FaLifeRing, FaBriefcase } from "react-icons/fa";
 import { useRouter } from "next/navigation";
-import AttendanceWidget from "../components/ui/AttendanceWidget";
+import { useEffect, useState } from "react";
+import { FaBell, FaBriefcase, FaLifeRing, FaSpinner } from "react-icons/fa";
+import { db } from "../lib/firebase";
+import { useAuth } from "../providers/AuthProvider";
+import { useInfoModalStore } from "../store/useInfoModalStore";
 
 // Interface for Project Requests
 interface ProjectRequest {
@@ -34,55 +34,77 @@ interface SupportTicket {
 }
 
 const DashboardPage = () => {
-  const { user, role } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
   const [requests, setRequests] = useState<ProjectRequest[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const { openModal } = useInfoModalStore();
 
   useEffect(() => {
-    // Admins are redirected to the admin panel
-    if (role === "admin") {
-      router.replace("/admin");
+    // Check Authentication Status
+    if (authLoading) {
       return;
     }
 
-    if (user) {
-      // Fetch Projects
+    // Handle redirects for non-user roles
+    if (role !== "user") {
+      if (role === "admin") router.replace("/admin");
+      if (role === "sales_rep") router.replace("/sales/dashboard");
+      if (role === "support_agent") router.replace("/support/dashboard");
+      return;
+    }
+
+    // Fetch user data
+    if (user && role === "user") {
       const projectsQuery = query(
         collection(db, "requests"),
         where("userId", "==", user.uid),
         orderBy("createdAt", "desc")
       );
-      const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-        setRequests(
-          snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() } as ProjectRequest)
-          )
-        );
-        setLoading(false);
-      });
+      const unsubscribeProjects = onSnapshot(
+        projectsQuery,
+        (snapshot) => {
+          setRequests(
+            snapshot.docs.map(
+              (doc) => ({ id: doc.id, ...doc.data() } as ProjectRequest)
+            )
+          );
+          setIsLoading(false);
+        },
+        (error) => {
+          openModal("Error", `Failed to fetch projects: ${error.message}`);
+          setIsLoading(false);
+        }
+      );
 
-      // Fetch Tickets
       const ticketsQuery = query(
         collection(db, "tickets"),
-        where("userId", "==", user.uid),
+        where("createdBy", "==", user.uid),
         orderBy("createdAt", "desc")
       );
-      const unsubscribeTickets = onSnapshot(ticketsQuery, (snapshot) => {
-        setTickets(
-          snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() } as SupportTicket)
-          )
-        );
-      });
+      const unsubscribeTickets = onSnapshot(
+        ticketsQuery,
+        (snapshot) => {
+          setTickets(
+            snapshot.docs.map(
+              (doc) => ({ id: doc.id, ...doc.data() } as SupportTicket)
+            )
+          );
+        },
+        (error) => {
+          openModal("Error", `Failed to fetch tickets: ${error.message}`);
+        }
+      );
 
       return () => {
         unsubscribeProjects();
         unsubscribeTickets();
       };
+    } else {
+      setIsLoading(false);
     }
-  }, [user, role, router]);
+  }, [user, role, router, authLoading, openModal]);
 
   const getStatusChipColor = (status?: string) => {
     switch (status) {
@@ -114,85 +136,110 @@ const DashboardPage = () => {
     }
   };
 
-  if (loading) {
+  const getTicketPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "High":
+        return "bg-red-100 text-red-800";
+      case "Medium":
+        return "bg-orange-100 text-orange-800";
+      case "Low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-background'>
-        <p className='text-text-secondary'>Loading your dashboard...</p>
+      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
+        <div className='flex items-center space-x-3'>
+          <FaSpinner className='animate-spin text-blue-600' size={24} />
+          <p className='text-gray-600 text-base'>Loading your dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className='min-h-screen bg-background p-4 sm:p-8'>
-      <div className='max-w-7xl mx-auto'>
-        <header className='mb-10'>
-          <h1 className='text-4xl font-bold text-slate-900'>
-            Welcome, {user?.displayName || user?.email}
-          </h1>
-          <p className='text-gray-500 mt-2'>
-            This is your personal dashboard. View your projects and support
-            tickets here.
-          </p>
-        </header>
-
-        {/* **THE FIX IS HERE** */}
-        {/* Conditionally render the AttendanceWidget only for specific roles */}
-        {(role === "sales_rep" || role === "support_agent") && (
-          <div className='mb-8'>
-            <AttendanceWidget />
+    <div className='min-h-screen bg-gray-50'>
+      {/* Sticky Header */}
+      <header className='sticky top-0 z-20 bg-white shadow-sm py-4 px-4 sm:px-6 lg:px-8'>
+        <div className='max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4'>
+          <div>
+            <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>
+              Welcome, {user?.displayName || user?.email}
+            </h1>
+            <p className='text-sm sm:text-base text-gray-500 mt-1'>
+              Manage your projects and support tickets.
+            </p>
           </div>
-        )}
+          <Link
+            href='/contact'
+            className='inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500'
+          >
+            <FaBriefcase className='mr-2' />
+            Start New Project
+          </Link>
+        </div>
+      </header>
 
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+      {/* Main Content */}
+      <main className='max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
           {/* My Projects Section */}
-          <section>
-            <h2 className='text-2xl font-bold text-slate-800 mb-4 flex items-center'>
-              <FaBriefcase className='mr-3 text-blue-600' /> My Projects
+          <section className='bg-white rounded-lg shadow-md border border-gray-200 p-5'>
+            <h2 className='text-lg sm:text-xl font-semibold text-gray-900 flex items-center mb-4'>
+              <FaBriefcase className='mr-2 text-blue-600' /> My Projects
             </h2>
-            <div className='space-y-4'>
+            <div className='space-y-3 max-h-[40vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100'>
               {requests.length > 0 ? (
                 requests.map((req) => (
                   <Link href={`/dashboard/${req.id}`} key={req.id}>
-                    <div className='bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden'>
-                      <div className='p-5'>
-                        <div className='flex justify-between items-start'>
+                    <div className='p-3 border rounded-md hover:bg-gray-100 transition-colors'>
+                      <div className='flex justify-between items-center gap-2'>
+                        <div className='flex-1 min-w-0'>
                           <p
-                            className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusChipColor(
+                            className='font-semibold text-gray-800 text-sm sm:text-base truncate'
+                            title={req.message}
+                          >
+                            {req.message}
+                          </p>
+                          <p className='text-xs text-gray-500 mt-1'>
+                            Created:{" "}
+                            {new Date(
+                              req.createdAt?.toDate()
+                            ).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          {req.lastUpdatedBy === "admin" && (
+                            <span className='text-xs font-bold text-teal-600 animate-pulse flex items-center'>
+                              <FaBell className='mr-1' /> Update
+                            </span>
+                          )}
+                          <span
+                            className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${getStatusChipColor(
                               req.status
                             )}`}
                           >
                             {req.status || "Service Selection Pending"}
-                          </p>
-                          {req.lastUpdatedBy === "admin" && (
-                            <div className='flex items-center text-xs font-bold text-teal-600 animate-pulse'>
-                              <FaBell className='mr-1' /> New Update
-                            </div>
-                          )}
+                          </span>
                         </div>
-                        <p className='text-lg font-bold text-slate-800 mt-4'>
-                          Request from{" "}
-                          {new Date(
-                            req.createdAt?.toDate()
-                          ).toLocaleDateString()}
-                        </p>
-                        <p className='text-sm text-gray-600 mt-2 line-clamp-2'>
-                          {req.message}
-                        </p>
-                      </div>
-                      <div className='bg-gray-50 p-4 text-right text-blue-600 font-semibold'>
-                        View Project &rarr;
                       </div>
                     </div>
                   </Link>
                 ))
               ) : (
-                <div className='text-center bg-white p-10 rounded-lg shadow-md'>
-                  <h3 className='text-xl font-bold text-slate-900'>
-                    No Projects Yet
-                  </h3>
-                  <p className='mt-2 text-gray-600'>
-                    Click &quot;Contact&quot; in the navigation to start a new
-                    project.
+                <div className='text-center py-6'>
+                  <p className='text-gray-600 text-sm sm:text-base'>
+                    No projects yet.{" "}
+                    <Link
+                      href='/contact'
+                      className='text-blue-600 hover:underline'
+                    >
+                      Start a new project
+                    </Link>
+                    .
                   </p>
                 </div>
               )}
@@ -200,57 +247,77 @@ const DashboardPage = () => {
           </section>
 
           {/* My Support Tickets Section */}
-          <section>
+          <section className='bg-white rounded-lg shadow-md border border-gray-200 p-5'>
             <div className='flex justify-between items-center mb-4'>
-              <h2 className='text-2xl font-bold text-slate-800 flex items-center'>
-                <FaLifeRing className='mr-3 text-red-600' /> My Support Tickets
+              <h2 className='text-lg sm:text-xl font-semibold text-gray-900 flex items-center'>
+                <FaLifeRing className='mr-2 text-red-600' /> My Support Tickets
               </h2>
               <Link
                 href='/dashboard/tickets'
-                className='text-sm font-medium text-blue-600 hover:underline'
+                className='inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500'
               >
                 Create New Ticket
               </Link>
             </div>
-            <div className='space-y-4'>
+            <div className='space-y-3 max-h-[40vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100'>
               {tickets.length > 0 ? (
                 tickets.map((ticket) => (
                   <div
                     key={ticket.id}
-                    className='bg-white p-5 rounded-lg shadow-md'
+                    className='p-3 border rounded-md hover:bg-gray-100 transition-colors'
                   >
-                    <div className='flex justify-between items-center'>
-                      <p className='font-semibold text-gray-800'>
-                        {ticket.subject}
-                      </p>
-                      <span
-                        className={`text-xs font-semibold px-3 py-1 rounded-full ${getTicketStatusColor(
-                          ticket.status
-                        )}`}
-                      >
-                        {ticket.status}
-                      </span>
+                    <div className='flex justify-between items-center gap-2'>
+                      <div className='flex-1 min-w-0'>
+                        <p
+                          className='font-semibold text-gray-800 text-sm sm:text-base truncate'
+                          title={ticket.subject}
+                        >
+                          {ticket.subject}
+                        </p>
+                        <p className='text-xs text-gray-500 mt-1'>
+                          Submitted:{" "}
+                          {new Date(
+                            ticket.createdAt.toDate()
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span
+                          className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${getTicketStatusColor(
+                            ticket.status
+                          )}`}
+                        >
+                          {ticket.status}
+                        </span>
+                        <span
+                          className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${getTicketPriorityColor(
+                            ticket.priority
+                          )}`}
+                        >
+                          {ticket.priority}
+                        </span>
+                      </div>
                     </div>
-                    <p className='text-sm text-gray-500 mt-1'>
-                      Submitted on:{" "}
-                      {new Date(ticket.createdAt.toDate()).toLocaleDateString()}
-                    </p>
                   </div>
                 ))
               ) : (
-                <div className='text-center bg-white p-10 rounded-lg shadow-md'>
-                  <h3 className='text-xl font-bold text-slate-900'>
-                    No Tickets Found
-                  </h3>
-                  <p className='mt-2 text-gray-600'>
-                    You can create a new support ticket if you need assistance.
+                <div className='text-center py-6'>
+                  <p className='text-gray-600 text-sm sm:text-base'>
+                    No tickets found.{" "}
+                    <Link
+                      href='/dashboard/tickets'
+                      className='text-blue-600 hover:underline'
+                    >
+                      Create a new ticket
+                    </Link>
+                    .
                   </p>
                 </div>
               )}
             </div>
           </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
