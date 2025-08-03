@@ -234,8 +234,8 @@ const CreateBlogPage = () => {
                 <p>
                   # My First Blog Post This is my very first post! <br />
                   I&apos;m **really excited** to share it. <br />
-                  Here are a few things I&apos;ll be writing about: <br />
-                  - Web Development
+                  Here are a few things I&apos;ll be writing about:
+                  <br />- Web Development
                   <br /> - Digital Marketing
                   <br /> - Design Trends <br />
                   Stay tuned for more updates. You can visit our main site
