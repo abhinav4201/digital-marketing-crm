@@ -5,8 +5,11 @@ import HeroSection from "./components/sections/HeroSection";
 import ServicesSection from "./components/sections/ServicesSection";
 import TeamSection from "./components/sections/TeamSection";
 import TestimonialSection from "./components/sections/TestimonialSection";
+import { shouldShowDynamicCTA } from "./utils/timeBasedVisibility";
 
 export default function Home() {
+  const showCTA = shouldShowDynamicCTA();
+
   return (
     <div>
       <HeroSection />
@@ -25,7 +28,7 @@ export default function Home() {
       <div id='team'>
         <TeamSection />
       </div>
-      <CTASection />
+      {showCTA && <CTASection />}
     </div>
   );
 }

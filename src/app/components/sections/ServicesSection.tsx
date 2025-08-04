@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { FaPaintBrush, FaCode, FaBullhorn } from "react-icons/fa";
 import { useState } from "react";
 import ServiceDetailModal from "../ui/ServiceDetailModal";
+import AnimatedGradientBackground from "../animations/AnimatedGradientBackground";
+import { generateRandomGradient } from "../../utils/gradientAnimation";
 
 const services = [
   {
@@ -44,6 +46,8 @@ const services = [
     points: [
       "Search Engine Optimization (SEO)",
       "Pay-Per-Click (PPC) campaigns",
+      "Google Ads Campaigns (PPC)",
+      "Meta (Facebook & Instagram) Ads",
       "Content strategy & creation",
       "Analytics and performance reporting",
     ],
@@ -58,6 +62,7 @@ const ServicesSection = () => {
     setSelectedService(service);
     setModalOpen(true);
   };
+  const gradientProps = generateRandomGradient();
 
   const closeModal = () => {
     setModalOpen(false);
@@ -66,8 +71,12 @@ const ServicesSection = () => {
 
   return (
     <>
-      <section id='services' className='py-20 bg-gray-800'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+      <section
+        id='services'
+        className='relative h-screen flex items-center justify-center text-center overflow-hidden'
+      >
+        <AnimatedGradientBackground {...gradientProps} />
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
           <div className='text-center'>
             <h2 className='text-3xl font-extrabold text-white sm:text-4xl'>
               Our Services

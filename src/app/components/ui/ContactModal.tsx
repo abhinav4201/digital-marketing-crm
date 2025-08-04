@@ -87,7 +87,6 @@ const ContactFormView = ({
           placeholder='Email address'
         />
       </div>
-      {/* ADDED: Company Input */}
       <div>
         <input
           type='text'
@@ -161,6 +160,49 @@ const ContactFormView = ({
         </div>
       )}
       <div>
+        <select
+          name='projectType'
+          value={formData.projectType}
+          onChange={handleChange}
+          className='block w-full shadow-sm py-3 px-4 placeholder-gray-400 bg-gray-900 border-gray-700 rounded-md focus:ring-cyan-500 focus:border-cyan-500'
+        >
+          <option value=''>Select Project Type</option>
+          <option value='Static Website'>Static Website</option>
+          <option value='Dynamic Website'>Dynamic Website</option>
+          <option value='Other'>Other</option>
+        </select>
+      </div>
+      <div>
+        <select
+          name='leadSource'
+          value={formData.leadSource}
+          onChange={handleChange}
+          className='block w-full shadow-sm py-3 px-4 placeholder-gray-400 bg-gray-900 border-gray-700 rounded-md focus:ring-cyan-500 focus:border-cyan-500'
+        >
+          <option value=''>How did you hear about us?</option>
+          <option value='Google'>Google</option>
+          <option value='Social Media'>Social Media</option>
+          <option value='Referral'>Referral</option>
+          <option value='Other'>Other</option>
+        </select>
+      </div>
+      {formData.projectType === "Other" && (
+        <div>
+          <select
+            name='budget'
+            value={formData.budget}
+            onChange={handleChange}
+            className='block w-full shadow-sm py-3 px-4 placeholder-gray-400 bg-gray-900 border-gray-700 rounded-md focus:ring-cyan-500 focus:border-cyan-500'
+          >
+            <option value=''>Select Budget (INR)</option>
+            <option value='<5000'>Less than ₹5,000</option>
+            <option value='5000-10000'>₹5,000 - ₹10,000</option>
+            <option value='10000-20000'>₹10,000 - ₹20,000</option>
+            <option value='>20000'>More than ₹20,000</option>
+          </select>
+        </div>
+      )}
+      <div>
         <textarea
           id='message'
           name='message'
@@ -172,7 +214,6 @@ const ContactFormView = ({
           placeholder='Your Message'
         ></textarea>
       </div>
-      {/* ADDED: Tags Input */}
       <div>
         <input
           type='text'
@@ -197,7 +238,7 @@ const ContactFormView = ({
 };
 
 const ContactModal = () => {
-  const { isOpen, closeModal } = useModalStore();
+  const { isOpen, closeModal, projectType } = useModalStore();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -206,8 +247,11 @@ const ContactModal = () => {
     email: "",
     phone: "",
     message: "",
-    company: "", // Added state
-    tags: "", // Added state
+    company: "",
+    tags: "",
+    projectType: "",
+    budget: "",
+    leadSource: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -230,6 +274,9 @@ const ContactModal = () => {
         message: "",
         company: "",
         tags: "",
+        projectType: "",
+        budget: "",
+        leadSource: "",
       });
       setError("");
       setSubmissionComplete(false);
@@ -249,9 +296,13 @@ const ContactModal = () => {
 
   useEffect(() => {
     if (user && isOpen) {
-      resetForm(false);
+      // Pre-fill projectType when the modal opens with a selection
+      setFormData((prev) => ({
+        ...prev,
+        projectType: projectType || "",
+      }));
     }
-  }, [user, isOpen, resetForm]);
+  }, [user, isOpen, projectType]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -305,7 +356,9 @@ const ContactModal = () => {
   );
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
     if (name === "phone" && !/^\d*$/.test(value)) return;

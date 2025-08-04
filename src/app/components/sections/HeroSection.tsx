@@ -59,11 +59,41 @@ const HeroSection = () => {
           className='mt-10'
         >
           <button
-            onClick={openModal}
+            onClick={() => openModal()}
             className='bg-white text-slate-900 font-bold py-4 px-10 rounded-full text-lg hover:bg-cyan-400 hover:text-white transition-all duration-300 shadow-lg transform hover:scale-105'
           >
             Start Your Project
           </button>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.5 }}
+          className='mt-12 flex justify-center items-center space-x-4'
+        >
+          <div className='flex items-center space-x-2 text-gray-300'>
+            <svg
+              className='w-6 h-6'
+              fill='currentColor'
+              viewBox='0 0 24 24'
+              aria-hidden='true'
+            >
+              <path d='M12 1.5a10.5 10.5 0 100 21 10.5 10.5 0 000-21zm-2.25 15L6 12.75l1.06-1.06L9.75 13.44l5.69-5.69L16.5 9l-6.75 6.75z' />
+            </svg>
+            <span className='font-semibold'>Google Partner</span>
+          </div>
+          <div className='h-6 w-px bg-gray-600'></div>
+          <div className='flex items-center space-x-2 text-gray-300'>
+            <svg
+              className='w-6 h-6'
+              fill='currentColor'
+              viewBox='0 0 24 24'
+              aria-hidden='true'
+            >
+              <path d='M12 1.5a10.5 10.5 0 100 21 10.5 10.5 0 000-21zm-2.25 15L6 12.75l1.06-1.06L9.75 13.44l5.69-5.69L16.5 9l-6.75 6.75z' />
+            </svg>
+            <span className='font-semibold'>Meta Business Partner</span>
+          </div>
         </motion.div>
       </div>
     </section>
@@ -71,3 +101,4 @@ const HeroSection = () => {
 };
 
 export default HeroSection;
+
