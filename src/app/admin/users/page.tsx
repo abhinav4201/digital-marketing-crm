@@ -39,7 +39,7 @@ const PAGE_SIZE = 15;
 const UserManagementPage = () => {
   const { user, role } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
-  const [managers, setManagers] = useState<UserData[]>([]); // <-- ADDED: State for managers list
+  const [managers, setManagers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +51,6 @@ const UserManagementPage = () => {
   const [isNextPageAvailable, setIsNextPageAvailable] = useState(true);
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  // MODIFIED: Consolidated edit state into a single object
   const [editFormData, setEditFormData] = useState<Partial<UserData>>({});
 
   useEffect(() => {
@@ -60,7 +59,6 @@ const UserManagementPage = () => {
       return;
     }
 
-    // ADDED: Query to fetch all potential managers for the dropdown
     const managersQuery = query(
       collection(db, "users"),
       where("role", "in", ["admin", "manager"])
@@ -71,7 +69,6 @@ const UserManagementPage = () => {
       );
     });
 
-    // PRESERVED: Your original paginated query for the main user list
     const q = query(
       collection(db, "users"),
       orderBy("email"),
@@ -98,13 +95,12 @@ const UserManagementPage = () => {
 
     return () => {
       unsubscribe();
-      unsubManagers(); // Cleanup manager listener
+      unsubManagers();
     };
   }, [role]);
 
   const handleEdit = (user: UserData) => {
     setEditingUserId(user.id);
-    // MODIFIED: Set all editable fields in the form state object
     setEditFormData({
       role: user.role,
       managerId: user.managerId || "",
@@ -128,11 +124,28 @@ const UserManagementPage = () => {
       return;
     }
 
-    // ADDED: Logic to find the manager's name based on the selected ID
     const selectedManager = managers.find(
       (m) => m.id === editFormData.managerId
     );
     const managerName = selectedManager ? selectedManager.displayName : null;
+
+    const isStaffRole =
+      editFormData.role === "sales_rep" ||
+      editFormData.role === "support_agent";
+
+    // **THIS IS THE CRITICAL FIX FOR THE SAVING ERROR**
+    // The backend API expects a property named `newRole`, not `role`.
+    const finalPayload = {
+      newRole: editFormData.role,
+      managerId: isStaffRole ? editFormData.managerId : null,
+      managerName: isStaffRole ? managerName : null,
+      shiftStartTime: isStaffRole ? editFormData.shiftStartTime : null,
+      shiftEndTime: isStaffRole ? editFormData.shiftEndTime : null,
+      lunchBreakStart: isStaffRole ? editFormData.lunchBreakStart : null,
+      lunchBreakEnd: isStaffRole ? editFormData.lunchBreakEnd : null,
+      teaBreakStart: isStaffRole ? editFormData.teaBreakStart : null,
+      teaBreakEnd: isStaffRole ? editFormData.teaBreakEnd : null,
+    };
 
     try {
       const idToken = await user.getIdToken();
@@ -144,8 +157,7 @@ const UserManagementPage = () => {
         },
         body: JSON.stringify({
           userIdToUpdate,
-          ...editFormData,
-          managerName, // Send the manager's name to the API
+          ...finalPayload,
         }),
       });
 
@@ -160,7 +172,6 @@ const UserManagementPage = () => {
     }
   };
 
-  // ADDED: Generic input handler for the edit form
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -168,7 +179,6 @@ const UserManagementPage = () => {
     setEditFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // PRESERVED: Your original pagination functions
   const fetchNextPage = () => {
     if (!lastVisible || role !== "admin") return;
     setLoading(true);
@@ -278,13 +288,12 @@ const UserManagementPage = () => {
                             onChange={handleInputChange}
                             className='p-2 border border-gray-300 rounded-md text-sm'
                           >
-                            <option value='user'>Client</option>
+                            <option value='user'>User</option>
                             <option value='support_agent'>Support Agent</option>
                             <option value='sales_rep'>Sales Rep</option>
                             <option value='manager'>Manager</option>
                             <option value='admin'>Admin</option>
                           </select>
-                          {/* ADDED: Conditional rendering for manager dropdown */}
                           {(editFormData.role === "sales_rep" ||
                             editFormData.role === "support_agent") && (
                             <select
@@ -315,77 +324,89 @@ const UserManagementPage = () => {
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
                       {editingUserId === u.id ? (
-                        <div className='space-y-2'>
-                          <div className='flex items-center gap-2'>
-                            <label className='w-20'>Shift:</label>
-                            <input
-                              type='time'
-                              name='shiftStartTime'
-                              value={editFormData.shiftStartTime}
-                              onChange={handleInputChange}
-                              className='p-1 border border-gray-300 rounded-md'
-                            />
-                            <span>-</span>
-                            <input
-                              type='time'
-                              name='shiftEndTime'
-                              value={editFormData.shiftEndTime}
-                              onChange={handleInputChange}
-                              className='p-1 border border-gray-300 rounded-md'
-                            />
-                          </div>
-                          <div className='flex items-center gap-2'>
-                            <label className='w-20'>Lunch:</label>
-                            <input
-                              type='time'
-                              name='lunchBreakStart'
-                              value={editFormData.lunchBreakStart}
-                              onChange={handleInputChange}
-                              className='p-1 border border-gray-300 rounded-md'
-                            />
-                            <span>-</span>
-                            <input
-                              type='time'
-                              name='lunchBreakEnd'
-                              value={editFormData.lunchBreakEnd}
-                              onChange={handleInputChange}
-                              className='p-1 border border-gray-300 rounded-md'
-                            />
-                          </div>
-                          <div className='flex items-center gap-2'>
-                            <label className='w-20'>Tea:</label>
-                            <input
-                              type='time'
-                              name='teaBreakStart'
-                              value={editFormData.teaBreakStart}
-                              onChange={handleInputChange}
-                              className='p-1 border border-gray-300 rounded-md'
-                            />
-                            <span>-</span>
-                            <input
-                              type='time'
-                              name='teaBreakEnd'
-                              value={editFormData.teaBreakEnd}
-                              onChange={handleInputChange}
-                              className='p-1 border border-gray-300 rounded-md'
-                            />
-                          </div>
-                        </div>
+                        <>
+                          {(editFormData.role === "sales_rep" ||
+                            editFormData.role === "support_agent") && (
+                            <div className='space-y-2'>
+                              <div className='flex items-center gap-2'>
+                                <label className='w-20'>Shift:</label>
+                                <input
+                                  type='time'
+                                  name='shiftStartTime'
+                                  value={editFormData.shiftStartTime}
+                                  onChange={handleInputChange}
+                                  className='p-1 border border-gray-300 rounded-md'
+                                />
+                                <span>-</span>
+                                <input
+                                  type='time'
+                                  name='shiftEndTime'
+                                  value={editFormData.shiftEndTime}
+                                  onChange={handleInputChange}
+                                  className='p-1 border border-gray-300 rounded-md'
+                                />
+                              </div>
+                              <div className='flex items-center gap-2'>
+                                <label className='w-20'>Lunch:</label>
+                                <input
+                                  type='time'
+                                  name='lunchBreakStart'
+                                  value={editFormData.lunchBreakStart}
+                                  onChange={handleInputChange}
+                                  className='p-1 border border-gray-300 rounded-md'
+                                />
+                                <span>-</span>
+                                <input
+                                  type='time'
+                                  name='lunchBreakEnd'
+                                  value={editFormData.lunchBreakEnd}
+                                  onChange={handleInputChange}
+                                  className='p-1 border border-gray-300 rounded-md'
+                                />
+                              </div>
+                              <div className='flex items-center gap-2'>
+                                <label className='w-20'>Tea:</label>
+                                <input
+                                  type='time'
+                                  name='teaBreakStart'
+                                  value={editFormData.teaBreakStart}
+                                  onChange={handleInputChange}
+                                  className='p-1 border border-gray-300 rounded-md'
+                                />
+                                <span>-</span>
+                                <input
+                                  type='time'
+                                  name='teaBreakEnd'
+                                  value={editFormData.teaBreakEnd}
+                                  onChange={handleInputChange}
+                                  className='p-1 border border-gray-300 rounded-md'
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        <div className='text-xs'>
-                          <p>
-                            <strong>Shift:</strong> {u.shiftStartTime || "N/A"}{" "}
-                            - {u.shiftEndTime || "N/A"}
-                          </p>
-                          <p>
-                            <strong>Lunch:</strong> {u.lunchBreakStart || "N/A"}{" "}
-                            - {u.lunchBreakEnd || "N/A"}
-                          </p>
-                          <p>
-                            <strong>Tea:</strong> {u.teaBreakStart || "N/A"} -{" "}
-                            {u.teaBreakEnd || "N/A"}
-                          </p>
-                        </div>
+                        <>
+                          {(u.role === "sales_rep" ||
+                            u.role === "support_agent") && (
+                            <div className='text-xs'>
+                              <p>
+                                <strong>Shift:</strong>{" "}
+                                {u.shiftStartTime || "N/A"} -{" "}
+                                {u.shiftEndTime || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Lunch:</strong>{" "}
+                                {u.lunchBreakStart || "N/A"} -{" "}
+                                {u.lunchBreakEnd || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Tea:</strong> {u.teaBreakStart || "N/A"}{" "}
+                                - {u.teaBreakEnd || "N/A"}
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap text-sm font-medium'>
@@ -419,7 +440,6 @@ const UserManagementPage = () => {
               </tbody>
             </table>
           </div>
-          {/* PRESERVED: Your original pagination controls */}
           <div className='bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6'>
             <button
               onClick={fetchPrevPage}

@@ -12,8 +12,13 @@ import { auth, db } from "../lib/firebase";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation"; // Import useRouter
 
-// Define user roles
-export type UserRole = "admin" | "sales_rep" | "support_agent" | "user";
+// --- FIX IS HERE ---
+export type UserRole =
+  | "admin"
+  | "sales_rep"
+  | "support_agent"
+  | "user"
+  | "manager"; // Added 'manager'
 
 interface AuthContextType {
   user: User | null;
@@ -34,11 +39,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter(); // Initialize router
 
   useEffect(() => {
-    // This unsubscribes from the Firestore listener when the component unmounts
     let unsubscribeFromFirestore: (() => void) | null = null;
 
     const unsubscribeFromAuth = onAuthStateChanged(auth, (user) => {
-      // If there's an existing Firestore listener, unsubscribe from it
       if (unsubscribeFromFirestore) {
         unsubscribeFromFirestore();
       }
@@ -46,33 +49,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         const userDocRef = doc(db, "users", user.uid);
 
-        // NEW: Real-time listener for the user's document
         unsubscribeFromFirestore = onSnapshot(userDocRef, async (docSnap) => {
           if (docSnap.exists()) {
             const userData = docSnap.data();
             const newRole: UserRole = userData.role || "user";
-            
-            // If the role has changed, redirect to the appropriate dashboard
-            if (role !== newRole) {
-                setRole(newRole);
-                switch (newRole) {
-                    case "admin":
-                        router.push("/admin");
-                        break;
-                    case "sales_rep":
-                        router.push("/sales/dashboard");
-                        break;
-                    case "support_agent":
-                        router.push("/support/dashboard");
-                        break;
-                    default:
-                        router.push("/dashboard");
-                        break;
-                }
-            }
-            setUser(user); // Keep user object in sync
 
-            // Ensure the document is up-to-date (optional, but good practice)
+            if (role !== newRole) {
+              setRole(newRole);
+              switch (newRole) {
+                case "admin":
+                  router.push("/admin");
+                  break;
+                case "sales_rep":
+                  router.push("/sales/dashboard");
+                  break;
+                case "support_agent":
+                  router.push("/support/dashboard");
+                  break;
+                default:
+                  router.push("/dashboard");
+                  break;
+              }
+            }
+            setUser(user);
+
             await setDoc(
               userDocRef,
               {
@@ -83,7 +83,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               { merge: true }
             );
           } else {
-            // This case handles a brand new user
             await setDoc(
               userDocRef,
               {

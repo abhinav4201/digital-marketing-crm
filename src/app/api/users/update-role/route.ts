@@ -1,8 +1,6 @@
- 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb, adminAuth } from "../../../lib/firestore.server";
-// import { doc, updateDoc } from "firebase/firestore";
 
 export async function POST(req: NextRequest) {
   if (!adminAuth || !adminDb) {
@@ -21,7 +19,6 @@ export async function POST(req: NextRequest) {
     const idToken = authorization.split("Bearer ")[1];
     const decodedToken = await adminAuth.verifyIdToken(idToken);
 
-    // Check if the user making the request is an admin
     const adminDocRef = adminDb.collection("users").doc(decodedToken.uid);
     const adminDoc = await adminDocRef.get();
 
@@ -32,9 +29,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // --- FIX STARTS HERE ---
+    // Destructure all the fields sent from the frontend
     const {
       userIdToUpdate,
       newRole,
+      managerId,
+      managerName,
       shiftStartTime,
       shiftEndTime,
       lunchBreakStart,
@@ -50,7 +51,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validRoles = ["admin", "sales_rep", "support_agent", "user"];
+    const validRoles = [
+      "admin",
+      "sales_rep",
+      "support_agent",
+      "user",
+      "manager",
+    ];
     if (!validRoles.includes(newRole)) {
       return NextResponse.json(
         { error: "Invalid role specified." },
@@ -60,9 +67,11 @@ export async function POST(req: NextRequest) {
 
     const userDocRef = adminDb.collection("users").doc(userIdToUpdate);
 
-    // Construct the update payload
+    // Construct the update payload with all fields
     const updatePayload: { [key: string]: any } = {
       role: newRole,
+      managerId: managerId || null,
+      managerName: managerName || null,
       shiftStartTime: shiftStartTime || null,
       shiftEndTime: shiftEndTime || null,
       lunchBreakStart: lunchBreakStart || null,
@@ -71,8 +80,8 @@ export async function POST(req: NextRequest) {
       teaBreakEnd: teaBreakEnd || null,
     };
 
-    // Update the user document in Firestore
     await userDocRef.update(updatePayload);
+    // --- FIX ENDS HERE ---
 
     return NextResponse.json(
       { message: `User details updated successfully for role: ${newRole}` },
