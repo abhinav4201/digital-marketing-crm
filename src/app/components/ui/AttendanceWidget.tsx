@@ -1,17 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useState, useEffect } from "react";
-import { useAuth } from "../../providers/AuthProvider";
-import { db } from "../../lib/firebase";
 import {
   collection,
-  query,
-  where,
   onSnapshot,
+  query,
   Timestamp,
+  where,
 } from "firebase/firestore";
+import { BarChart2, LogIn, LogOut } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { db } from "../../lib/firebase";
+import { useAuth } from "../../providers/AuthProvider";
 import { useInfoModalStore } from "../../store/useInfoModalStore";
-import { LogIn, LogOut } from "lucide-react";
 
 interface AttendanceRecord {
   id: string;
@@ -150,6 +151,15 @@ const AttendanceWidget = () => {
             </button>
           </div>
         )}
+      </div>
+      <div className='mt-4 text-center border-t pt-4'>
+        <Link
+          href='/dashboard/attendance'
+          className='text-blue-600 hover:underline text-sm font-semibold flex items-center justify-center'
+        >
+          <BarChart2 className='mr-2' size={16} />
+          View Full Report
+        </Link>
       </div>
     </div>
   );

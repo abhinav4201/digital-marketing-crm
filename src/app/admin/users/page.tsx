@@ -23,6 +23,8 @@ interface UserData {
   displayName: string;
   email: string;
   role: UserRole;
+  shiftStartTime?: string;
+  shiftEndTime?: string;
 }
 
 const PAGE_SIZE = 15;
@@ -42,10 +44,15 @@ const UserManagementPage = () => {
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole>("user");
+  const [shiftStartTime, setShiftStartTime] = useState("");
+  const [shiftEndTime, setShiftEndTime] = useState("");
+
 
   const handleEdit = (user: UserData) => {
     setEditingUserId(user.id);
     setSelectedRole(user.role);
+    setShiftStartTime(user.shiftStartTime || "09:00");
+    setShiftEndTime(user.shiftEndTime || "17:00");
   };
 
   const handleCancel = () => {
@@ -65,7 +72,12 @@ const UserManagementPage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ userIdToUpdate, newRole: selectedRole }),
+        body: JSON.stringify({
+          userIdToUpdate,
+          newRole: selectedRole,
+          shiftStartTime,
+          shiftEndTime,
+        }),
       });
 
       if (!response.ok) {
@@ -236,6 +248,18 @@ const UserManagementPage = () => {
                     className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
                   >
                     Role
+                  </th>
+                  <th
+                    scope='col'
+                    className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                  >
+                    Shift
+                  </th>
+                  <th
+                    scope='col'
+                    className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                  >
+                    Actions
                   </th>
                 </tr>
               </thead>
