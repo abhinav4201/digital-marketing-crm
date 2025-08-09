@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../providers/AuthProvider";
 import { db } from "../../lib/firebase";
 import {
@@ -9,16 +10,30 @@ import {
   orderBy,
   Timestamp,
   where,
+  limit,
+  startAfter,
+  endBefore,
+  limitToLast,
+  doc,
+  getDoc,
+  DocumentData,
+  QueryDocumentSnapshot,
+  QuerySnapshot, // Import QuerySnapshot type
 } from "firebase/firestore";
 import { Clock } from "lucide-react";
 
 interface AttendanceRecord {
   id: string;
   userName: string;
+  userId: string;
   date: Timestamp;
   clockInTime: Timestamp;
   clockOutTime: Timestamp | null;
+  shiftStartTime?: string;
+  shiftEndTime?: string;
 }
+
+const PAGE_SIZE = 15;
 
 const AttendanceReportPage = () => {
   const { role } = useAuth();
@@ -26,38 +41,126 @@ const AttendanceReportPage = () => {
   const [loading, setLoading] = useState(true);
   const [filterDate, setFilterDate] = useState(
     new Date().toISOString().split("T")[0]
-  ); // Default to today
+  );
+
+  // Pagination state
+  const [lastVisible, setLastVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [firstVisible, setFirstVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [page, setPage] = useState(1);
+  const [isNextPageAvailable, setIsNextPageAvailable] = useState(true);
+
+  // FIX: Added explicit types for snapshot and document parameters
+  const fetchRecords = useCallback((q: any) => {
+    setLoading(true);
+    const unsubscribe = onSnapshot(
+      q,
+      async (snapshot: QuerySnapshot<DocumentData>) => {
+        const fetchedRecords = await Promise.all(
+          snapshot.docs.map(async (d: QueryDocumentSnapshot<DocumentData>) => {
+            const attendanceData = d.data();
+            let userShift = { shiftStartTime: "N/A", shiftEndTime: "N/A" };
+
+            if (attendanceData.userId) {
+              const userDocRef = doc(db, "users", attendanceData.userId);
+              const userDoc = await getDoc(userDocRef);
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                userShift = {
+                  shiftStartTime: userData.shiftStartTime || "N/A",
+                  shiftEndTime: userData.shiftEndTime || "N/A",
+                };
+              }
+            }
+
+            // FIX: Construct the object without spreading a typed object, avoiding overwrite errors.
+            return {
+              id: d.id,
+              userName: attendanceData.userName,
+              userId: attendanceData.userId,
+              date: attendanceData.date,
+              clockInTime: attendanceData.clockInTime,
+              clockOutTime: attendanceData.clockOutTime,
+              ...userShift,
+            } as AttendanceRecord;
+          })
+        );
+
+        setRecords(fetchedRecords);
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+        setFirstVisible(snapshot.docs[0] || null);
+        setIsNextPageAvailable(snapshot.size === PAGE_SIZE);
+        setLoading(false);
+      }
+    );
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (role !== "admin") {
       setLoading(false);
       return;
     }
-
-    // Firestore query based on the selected date
+    setPage(1);
     const startOfDay = new Date(filterDate);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(filterDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     const q = query(
       collection(db, "attendance"),
       where("date", ">=", Timestamp.fromDate(startOfDay)),
-      where("date", "<=", Timestamp.fromDate(endOfDay)),
-      orderBy("date", "desc")
+      where(
+        "date",
+        "<",
+        Timestamp.fromDate(new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000))
+      ),
+      orderBy("date", "desc"),
+      limit(PAGE_SIZE)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setRecords(
-        snapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as AttendanceRecord)
-        )
-      );
-      setLoading(false);
-    });
-
+    const unsubscribe = fetchRecords(q);
     return () => unsubscribe();
-  }, [role, filterDate]);
+  }, [role, filterDate, fetchRecords]);
+
+  const fetchNextPage = () => {
+    if (!lastVisible) return;
+    const startOfDay = new Date(filterDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const q = query(
+      collection(db, "attendance"),
+      where("date", ">=", Timestamp.fromDate(startOfDay)),
+      where(
+        "date",
+        "<",
+        Timestamp.fromDate(new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000))
+      ),
+      orderBy("date", "desc"),
+      startAfter(lastVisible),
+      limit(PAGE_SIZE)
+    );
+    fetchRecords(q);
+    setPage((p) => p + 1);
+  };
+
+  const fetchPrevPage = () => {
+    if (!firstVisible) return;
+    const startOfDay = new Date(filterDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const q = query(
+      collection(db, "attendance"),
+      where("date", ">=", Timestamp.fromDate(startOfDay)),
+      where(
+        "date",
+        "<",
+        Timestamp.fromDate(new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000))
+      ),
+      orderBy("date", "desc"),
+      endBefore(firstVisible),
+      limitToLast(PAGE_SIZE)
+    );
+    fetchRecords(q);
+    setPage((p) => p - 1);
+  };
 
   const calculateDuration = (
     start: Timestamp,
@@ -71,7 +174,7 @@ const AttendanceReportPage = () => {
     return `${hours}h ${minutes}m`;
   };
 
-  if (loading) {
+  if (loading && records.length === 0) {
     return (
       <div className='min-h-screen flex items-center justify-center'>
         <p>Loading attendance records...</p>
@@ -131,7 +234,7 @@ const AttendanceReportPage = () => {
                     scope='col'
                     className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
                   >
-                    Date
+                    Shift Time
                   </th>
                   <th
                     scope='col'
@@ -160,7 +263,7 @@ const AttendanceReportPage = () => {
                       {rec.userName}
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-                      {new Date(rec.date.toDate()).toLocaleDateString()}
+                      {rec.shiftStartTime} - {rec.shiftEndTime}
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold'>
                       {new Date(rec.clockInTime.toDate()).toLocaleTimeString()}
@@ -179,7 +282,7 @@ const AttendanceReportPage = () => {
                 ))}
               </tbody>
             </table>
-            {records.length === 0 && (
+            {records.length === 0 && !loading && (
               <div className='text-center text-gray-500 py-12'>
                 <Clock className='mx-auto h-12 w-12 text-gray-400' />
                 <p className='mt-2'>
@@ -187,6 +290,24 @@ const AttendanceReportPage = () => {
                 </p>
               </div>
             )}
+          </div>
+          {/* Pagination Controls */}
+          <div className='bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6'>
+            <button
+              onClick={fetchPrevPage}
+              disabled={page <= 1}
+              className='relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              Previous
+            </button>
+            <span className='text-sm text-gray-500'>Page {page}</span>
+            <button
+              onClick={fetchNextPage}
+              disabled={!isNextPageAvailable}
+              className='ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>

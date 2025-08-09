@@ -2,16 +2,20 @@
 import { motion } from "framer-motion";
 import { useModalStore } from "../../store/useModalStore";
 import { CheckCircle } from "lucide-react";
-
+import { shouldShowDynamicCTA } from "../../utils/timeBasedVisibility"; // Import the logic
 
 const CTASection = () => {
   const { openModal } = useModalStore();
 
+  // Determine if the special offer pricing should be shown
+  const showSpecialOffer = shouldShowDynamicCTA();
+
   const plans = [
     {
       name: "Static Website",
-      originalPrice: "₹10,000",
-      price: "₹2,000",
+      // DYNAMIC PRICING: Show different prices based on the logic
+      originalPrice: showSpecialOffer ? "₹10,000" : "₹12,000",
+      price: showSpecialOffer ? "₹2,000" : "₹4,000",
       description: "Ideal for portfolios, landing pages, and small businesses.",
       features: [
         "Up to 5 Pages",
@@ -22,7 +26,8 @@ const CTASection = () => {
     },
     {
       name: "Dynamic Website",
-      price: "₹5,000+",
+      // DYNAMIC PRICING: Show different prices based on the logic
+      price: showSpecialOffer ? "₹5,000+" : "₹8,000+",
       description: "Perfect for blogs, e-commerce, and interactive sites.",
       features: [
         "Content Management System (CMS)",
@@ -44,8 +49,11 @@ const CTASection = () => {
           className='text-3xl font-extrabold sm:text-4xl'
         >
           <span className='block'>Choose Your Plan</span>
+          {/* DYNAMIC TEXT: Change the heading based on the offer */}
           <span className='block text-cyan-400'>
-            Limited Time Offer - Get Started Today!
+            {showSpecialOffer
+              ? "Limited Time Offer - Get Started Today!"
+              : "Standard Pricing - Start Your Project"}
           </span>
         </motion.h2>
 

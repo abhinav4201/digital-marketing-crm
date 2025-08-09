@@ -10,15 +10,15 @@ import {
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 
-// --- FIX IS HERE ---
+// Define user roles
 export type UserRole =
   | "admin"
   | "sales_rep"
   | "support_agent"
   | "user"
-  | "manager"; // Added 'manager'
+  | "manager"; // FIX: Added 'manager' role
 
 interface AuthContextType {
   user: User | null;
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole>("user");
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
 
   useEffect(() => {
     let unsubscribeFromFirestore: (() => void) | null = null;
@@ -56,9 +56,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             if (role !== newRole) {
               setRole(newRole);
+              // Redirect based on the new role
               switch (newRole) {
                 case "admin":
                   router.push("/admin");
+                  break;
+                case "manager": // ADDED: Redirect for manager
+                  router.push("/admin/approvals");
                   break;
                 case "sales_rep":
                   router.push("/sales/dashboard");

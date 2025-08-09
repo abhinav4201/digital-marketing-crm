@@ -73,7 +73,8 @@ const ServicesSection = () => {
     <>
       <section
         id='services'
-        className='relative h-screen flex items-center justify-center text-center overflow-hidden'
+        // **THE FIX**: Replaced h-screen with min-h-screen and added vertical padding for better mobile layout.
+        className='relative flex items-center justify-center text-center overflow-hidden min-h-screen py-24 sm:py-0'
       >
         <AnimatedGradientBackground {...gradientProps} />
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
